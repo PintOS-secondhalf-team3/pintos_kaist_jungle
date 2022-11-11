@@ -93,8 +93,27 @@ timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
 
 	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+	/* 악깡버 : loop 기반 wait() -> sleep/wakeup으로 변경 */
+	// while (timer_elapsed (start) < ticks)
+	// 	thread_yield ();
+	struct thread *curr = thread_current ();
+	curr->status = THREAD_BLOCKED;
+	list_push_back (&sleep_list, &curr->elem);
+	thread_sleep(ticks);
+}
+
+/* 악깡버 */
+void
+thread_sleep(int64_t ticks){
+	struct thread *curr = thread_current ();
+	if(curr != idle){
+		curr->status = THREAD_BLOCKED;
+		curr->wakeup_tick = ticks;
+		list_push_back (&sleep_list, &curr->elem);
+
+		// static struct thread *idle_thread;
+
+	}
 }
 
 /* Suspends execution for approximately MS milliseconds. */
