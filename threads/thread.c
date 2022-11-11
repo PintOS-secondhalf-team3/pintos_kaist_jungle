@@ -28,6 +28,11 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* 악깡버 */
+static struct list sleep_list;
+
+int64_t next_tick_to_awake = INT64_MAX;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -109,6 +114,7 @@ thread_init (void) {
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
+	list_init (&sleep_list);	/* 악깡버 */
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
@@ -301,11 +307,11 @@ thread_yield (void) {
 
 	ASSERT (!intr_context ());
 
-	old_level = intr_disable ();
+	old_level = intr_disable ();		 /* interrupt 비활성화 */
 	if (curr != idle_thread)
 		list_push_back (&ready_list, &curr->elem);
-	do_schedule (THREAD_READY);
-	intr_set_level (old_level);
+	do_schedule (THREAD_READY);			/* running thread 를 ready로 바꾸고 다음 thread를 running으로 바꿈 */
+	intr_set_level (old_level);			/* interrupt 못받는 상태로 설정하고, 이전 인터럽트 상태 반환 */
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
