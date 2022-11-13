@@ -7,6 +7,7 @@
 #include "threads/io.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+// #include "threads/thread.c"
 
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -28,7 +29,7 @@ static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
-
+// static void timer_interrupt (struct intr_frame *args UNUSED);
 /* Sets up the 8254 Programmable Interval Timer (PIT) to
    interrupt PIT_FREQ times per second, and registers the
    corresponding interrupt. */
@@ -88,33 +89,17 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+/* 인자로 주어진 ticks 동안 스레드를 block */
 void
 timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
-
 	ASSERT (intr_get_level () == INTR_ON);
 	/* 악깡버 : loop 기반 wait() -> sleep/wakeup으로 변경 */
 	// while (timer_elapsed (start) < ticks)
 	// 	thread_yield ();
-	struct thread *curr = thread_current ();
-	curr->status = THREAD_BLOCKED;
-	list_push_back (&sleep_list, &curr->elem);
-	thread_sleep(ticks);
+	thread_sleep(start + ticks);
 }
 
-/* 악깡버 */
-void
-thread_sleep(int64_t ticks){
-	struct thread *curr = thread_current ();
-	if(curr != idle){
-		curr->status = THREAD_BLOCKED;
-		curr->wakeup_tick = ticks;
-		list_push_back (&sleep_list, &curr->elem);
-
-		// static struct thread *idle_thread;
-
-	}
-}
 
 /* Suspends execution for approximately MS milliseconds. */
 void
@@ -143,8 +128,14 @@ timer_print_stats (void) {
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
-	ticks++;
+	ticks++;	/* OS가 부팅된 이후 타이머 틱 수 */
 	thread_tick ();
+	// int64_t start = timer_ticks ();
+	/* 악깡버 - 매 tick마다 sleep queue에서 깨어날 
+	thread가 있는지 확인하여, 깨우는 함수를 호출 */
+	if (ticks >= get_next_tick_to_awake()){
+		thread_awake(ticks); 
+	}
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
