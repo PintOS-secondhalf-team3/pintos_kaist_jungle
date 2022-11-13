@@ -89,15 +89,15 @@ timer_elapsed (int64_t then) {
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
-/* 인자로 주어진 ticks 동안 스레드를 block */
+/* 인자로 주어진 ticks동안 스레드를 block */
 void
-timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks ();
+timer_sleep (int64_t ticks) {	// test case 인자 : 재울 시간 
+	int64_t start = timer_ticks ();	// 현재 시간
 	ASSERT (intr_get_level () == INTR_ON);
-	/* 악깡버 : loop 기반 wait() -> sleep/wakeup으로 변경 */
+	/* loop 기반 wait() -> sleep/wakeup으로 변경 */
 	// while (timer_elapsed (start) < ticks)
 	// 	thread_yield ();
-	thread_sleep(start + ticks);
+	thread_sleep(start + ticks); // thread_sleep(현재 시간 + 재울 시간)
 }
 
 
@@ -126,13 +126,12 @@ timer_print_stats (void) {
 }
 
 /* Timer interrupt handler. */
+/* 타이머 인터럽트 핸들러 */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;	/* OS가 부팅된 이후 타이머 틱 수 */
 	thread_tick ();
-	// int64_t start = timer_ticks ();
-	/* 악깡버 - 매 tick마다 sleep queue에서 깨어날 
-	thread가 있는지 확인하여, 깨우는 함수를 호출 */
+	/* 매 tick마다 sleep queue에서 깨어날 thread가 있는지 확인하여, 깨우는 함수를 호출 */
 	if (ticks >= get_next_tick_to_awake()){
 		thread_awake(ticks); 
 	}
