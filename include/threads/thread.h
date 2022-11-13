@@ -95,7 +95,7 @@ struct thread {
 	struct list_elem allelem;			/* 악깡버 List element for all threads list. */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
-	int64_t	wakeup_tick;				/* 악깡버 */
+	int64_t	wakeup_tick;				/* 해당 스레드가 깨어날 시간 */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -143,7 +143,6 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-/* 악깡버 */
 void thread_sleep(int64_t ticks); /* 실행 중인 스레드를 슬립으로 만듬 */
 void thread_awake(int64_t ticks); /* 슬립큐에서 깨워야할 스레드를 깨움 */
 void update_next_tick_to_awake(int64_t ticks); /* 최소 틱을 가진 스레드 저장 */

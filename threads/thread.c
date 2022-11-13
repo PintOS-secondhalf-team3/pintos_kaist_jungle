@@ -28,7 +28,6 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
-/* 악깡버 */
 static struct list sleep_list;
 
 int64_t next_tick_to_awake = INT64_MAX;
@@ -155,7 +154,7 @@ thread_tick (void) {
 	else
 		kernel_ticks++;
 
-	/* Enforce preemption. */
+	/* 선점 시행 */
 	if (++thread_ticks >= TIME_SLICE)
 		intr_yield_on_return ();
 }
@@ -315,25 +314,15 @@ thread_yield (void) {
 	intr_set_level (old_level);			/* interrupt 못받는 상태로 설정하고, 이전 인터럽트 상태 반환 */
 }
 
-/* next_tick_to_awake 가 깨워야 할 스레드중 가장 작은 tick을 갖도록 업데이트 한다 */
+/* next_tick_to_awake가 깨워야 할 스레드 중 가장 작은 tick을 갖도록 업데이트 */
  void update_next_tick_to_awake(int64_t ticks) { // ticks = 최소값 
 	if (next_tick_to_awake > ticks){
 		next_tick_to_awake = ticks;
 	}
-	// ticks = INT64_MAX;
-	// // struct list_elem *cur = list_begin(&sleep_list);
-	// // while(cur != NULL){
-	// struct thread *t = list_entry(cur, struct thread, elem);	/* 사용할 엔트리를 포함한 구조체를 불러오는 것 */
-	// if(t->wakeup_tick <= ticks){
-	// 	ticks = t->wakeup_tick;
-	// }
-	// update_next_tick_to_awake(ticks);
-	// }
-	// next_tick_to_awake
 }
 
 
-/* next_tick_to_awake 을 반환한다. */ 
+/* next_tick_to_awake 을 반환. */ 
 int64_t get_next_tick_to_awake(void) {
 	return next_tick_to_awake;
 }
@@ -341,44 +330,39 @@ int64_t get_next_tick_to_awake(void) {
 
 /* Thread를 blocked 상태로 만들고 sleep queue에 삽입하여 대기 */
 void
-thread_sleep(int64_t ticks){
-	struct thread *curr = thread_current();
-	enum intr_level old_level;
+thread_sleep(int64_t ticks){ 				/* ticks = 현재 시간 + 재울 시간 = 깨어날 시간 */ 
+	struct thread *curr = thread_current(); /* 현재 쓰레드 */
+	enum intr_level old_level;				/* 인터럽트 상태 저장할 변수 */
 
 	ASSERT (!intr_context ());
 
-	old_level = intr_disable ();	
+	old_level = intr_disable ();			/* 인터럽트를 사용하지 않도록 설정하고 이전 인터럽트 상태를 반환  */
 	
-	curr->wakeup_tick = ticks;
-	if (curr != idle_thread){
+	curr->wakeup_tick = ticks;				/* 현재 쓰레드의 wakeup_tick에 ticks 저장*/
+	if (curr != idle_thread){				/* idle_thread는 sleep list에 넣지 않음 */
 		list_push_back (&sleep_list, &curr->elem);
 	}
 	
-	update_next_tick_to_awake(ticks);	/*  awake함수가 실행되어야 할 tick값을 update */
-	do_schedule (THREAD_BLOCKED);		/* running thread 를 ready로 바꾸고 다음 thread를 running으로 바꿈 : 컨텍스트 스위치 작업을 수행 */
-	// timer_interrupt(&curr->stack);	/* 이 모양, 이 위치가 맞나 의문 ? */
-	intr_set_level (old_level);			/* interrupt 못받는 상태로 설정하고, 이전 인터럽트 상태 반환 */
+	update_next_tick_to_awake(ticks);		/*  awake함수가 실행되어야 할 tick값을 update */
+	do_schedule (THREAD_BLOCKED);			/* running thread 를 block으로 바꾸고 다음 thread를 running으로 바꿈 : 컨텍스트 스위치 작업을 수행 */
+	intr_set_level (old_level);				/* 인터럽트를 다시 받아들이도록 수정 */
 }
 
 
 /* Sleep queue에서 깨워야 할 thread를 찾아서 wake */
-void thread_awake(int64_t ticks){ //ticks = 매시간
-	int64_t next_tick_to_awake = INT64_MAX; // 쓰레드가 일어나면 sleep list 변할 것
-	// sleep list의 모든 entry 를 순회하며 다음과 같은 작업을 수행
+void thread_awake(int64_t ticks){ 			/* ticks = 현재 시간 */
+	int64_t next_tick_to_awake = INT64_MAX; /* 쓰레드가 일어나면 sleep list 변할 거라 최소 시간 갱신 */
+	/* sleep list의 모든 entry 를 순회 */
 	struct list_elem *cur = list_begin(&sleep_list);
-	// int64_t start = timer_ticks ();
-	while(cur != list_end(&sleep_list)){	// 슬립 큐를 돌면서
-		// 현재 tick이 깨워야 할 tick 보다 크거나 같다면 
-		// if(timer_elapsed(start) >= ticks){
-		struct thread *t = list_entry(cur, struct thread, elem);
-		if (ticks >= t->wakeup_tick){
-		// 슬립 큐에서 제거하고 unblock 한다.
+	while(cur != list_end(&sleep_list)){
+		struct thread *t = list_entry(cur, struct thread, elem); /* cur의 structure 포인터 반환 */
+		if (ticks >= t->wakeup_tick){	/* 현재 시간이 t의 wakeup_tick보다 크거나 같으면 */
+			/* 슬립 큐에서 제거하고 unblock */
 			cur = list_remove(&t->elem);
 			thread_unblock(t);
-		}else{
-		// 작다면 update_next_tick_to_awake() 를 호출한다.
-			update_next_tick_to_awake(t->wakeup_tick);	/* 최소 틱을 가진 스레드 저장 */
-			cur = list_next(cur);
+		}else{	/* 현재 시간이 t의 wakeup_tick보다 작으면 update_next_tick_to_awake()를 호출 */ 
+			update_next_tick_to_awake(t->wakeup_tick);	/* 최소 틱을 next_tick_to_awak에 update */
+			cur = list_next(cur);						/* cur를 다음 cur로 변경 */
 		}
 	}
 }
