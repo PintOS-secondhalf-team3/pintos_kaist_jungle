@@ -90,8 +90,9 @@ struct thread {
 	tid_t tid;                          /* Thread identifier. */
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
+	uint8_t *stack;						/* 악깡버 Saved stack pointer.*/
 	int priority;                       /* Priority. */
-	struct list_elem allelem;			/* 악깡버 */		/* List element for all threads list. */
+	struct list_elem allelem;			/* 악깡버 List element for all threads list. */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	int64_t	wakeup_tick;				/* 악깡버 */
@@ -145,7 +146,7 @@ int thread_get_load_avg (void);
 /* 악깡버 */
 void thread_sleep(int64_t ticks); /* 실행 중인 스레드를 슬립으로 만듬 */
 void thread_awake(int64_t ticks); /* 슬립큐에서 깨워야할 스레드를 깨움 */
-void update_next_tick_to_awake(int64_t ticks); /*최소 틱을 가진 스레드 저장 */
+void update_next_tick_to_awake(int64_t ticks); /* 최소 틱을 가진 스레드 저장 */
 int64_t get_next_tick_to_awake(void); /* thread.c의 next_tick_to_awake 반환 */
 
 void do_iret (struct intr_frame *tf);
