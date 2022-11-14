@@ -75,15 +75,10 @@ sema_down (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 
-	struct semaphore_elem *s_elem = list_entry(&thread_current()->elem, struct semaphore_elem, elem);
-	// s_elem.elem = thread_current()->elem;
-	// // s_elem.semaphore = *sema;
-	s_elem->sema_priority = thread_get_priority();
 	while (sema->value == 0) {
-		// list_push_back (&sema->waiters, &thread_current ()->elem);
 		list_insert_ordered (&sema->waiters, &thread_current()->elem,
-		cmp_priority, NULL); // cmp_sem_priority 악깡버
-		thread_block ();	// call - context switching
+		cmp_priority, NULL);
+		thread_block ();	// context switching
 	}
 	sema->value--;
 	intr_set_level (old_level);
@@ -95,21 +90,13 @@ void *aux UNUSED){
 	struct semaphore_elem *sa = list_entry(a, struct semaphore_elem, elem);
 	struct semaphore_elem *sb = list_entry(b, struct semaphore_elem, elem);
 
+	/* 해당 condition variable 을 기다리는 세마포어 리스트를
+	가장 높은 우선순위를 가지는 스레드의 우선순위 순으로 정렬하도록 구현 */
 	if (sa->sema_priority > sb->sema_priority){
 		return true;
 	}else{
 		return false;
 	}
-	/* 해당 condition variable 을 기다리는 세마포어 리스트를
-	가장 높은 우선순위를 가지는 스레드의 우선순위 순으로 정렬하도록 구현 */
-
-	// struct list_elem *tmp2 = list_entry(a, struct list, tail); 
-
-	// struct semaphore *tmp1 = list_entry(sa->semaphore, struct semaphore, waiters);
-	// struct semaphore *tmp2 = list_entry(sb->semaphore, struct semaphore, waiters); 
-
-	// list_insert_ordered (&sema->waiters, &thread_current()->elem,
-	// 	cmp_sem_priority, NULL); 
 }
 
 
@@ -292,7 +279,7 @@ void
 cond_init (struct condition *cond) {
 	ASSERT (cond != NULL);
 
-	list_init (&cond->waiters);
+	list_init (&cond->waiters);	
 }
 
 /* Atomically releases LOCK and waits for COND to be signaled by
@@ -315,6 +302,7 @@ cond_init (struct condition *cond) {
    interrupt handler.  This function may be called with
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
+/* condition variable을 통해 signal이 오는지 기다림. 마치 sema_down */
 void
 cond_wait (struct condition *cond, struct lock *lock) {
 	struct semaphore_elem waiter;
@@ -328,7 +316,6 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	/* condition variable의 waiters list에 우선순위 순서로 삽입되도록 수정 */
 	waiter.sema_priority = thread_get_priority();
 	list_insert_ordered (&cond->waiters, &waiter.elem, cmp_sem_priority, NULL); 
-	// list_push_back (&cond->waiters, &waiter.elem);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
 	lock_acquire (lock);
@@ -341,6 +328,7 @@ cond_wait (struct condition *cond, struct lock *lock) {
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to signal a condition variable within an
    interrupt handler. */
+/*  condition variable에서 기다리는 가장 높은 우선순위의 스레드에 signal을 보냄 */
 void
 cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (cond != NULL);
@@ -349,7 +337,7 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	if (!list_empty (&cond->waiters))
-		 /* condition variable의 waiters list를 우선순위로 재 정열 */
+		 /* condition variable의 waiters list를 우선순위로 재정렬 */
 		list_sort(&cond->waiters, cmp_sem_priority, NULL);
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
