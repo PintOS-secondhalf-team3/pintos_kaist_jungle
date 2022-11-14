@@ -344,10 +344,9 @@ thread_sleep(int64_t ticks){ 				/* ticks = 현재 시간 + 재울 시간 = 깨�
 	curr->wakeup_tick = ticks;				/* 현재 쓰레드의 wakeup_tick에 ticks 저장*/
 	if (curr != idle_thread){				/* idle_thread는 sleep list에 넣지 않음 */
 		list_push_back (&sleep_list, &curr->elem);
+		update_next_tick_to_awake(ticks);	/* awake함수가 실행되어야 할 tick값을 update */
+		do_schedule (THREAD_BLOCKED);		/* running thread 를 block으로 바꾸고 다음 thread를 running으로 바꿈 : 컨텍스트 스위치 작업을 수행 */
 	}
-	
-	update_next_tick_to_awake(ticks);		/*  awake함수가 실행되어야 할 tick값을 update */
-	do_schedule (THREAD_BLOCKED);			/* running thread 를 block으로 바꾸고 다음 thread를 running으로 바꿈 : 컨텍스트 스위치 작업을 수행 */
 	intr_set_level (old_level);				/* 인터럽트를 다시 받아들이도록 수정 */
 }
 
