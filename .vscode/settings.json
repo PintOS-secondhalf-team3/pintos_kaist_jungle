@@ -4,6 +4,7 @@
         "thread.h": "c",
         "inttypes.h": "c",
         "intrinsic.h": "c",
-        "palloc.h": "c"
+        "palloc.h": "c",
+        "interrupt.h": "c"
     }
 }

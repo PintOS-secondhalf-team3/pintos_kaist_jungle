@@ -50,7 +50,7 @@ static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
 /* Scheduling. */
-#define TIME_SLICE 4            /* # of timer ticks to give each thread. */
+#define TIME_SLICE 4            /* 각 스레드를 제공하는 시간 눈금 */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 /* If false (default), use round-robin scheduler.
@@ -113,7 +113,7 @@ thread_init (void) {
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
-	list_init (&sleep_list);	/* 악깡버 */
+	list_init (&sleep_list);
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
@@ -209,9 +209,10 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-	/* Add to run queue. */
+	/* 실행 대기열에 추가 */
 	thread_unblock (t);
-
+	/* 현재 수행중인 스레드와 가장 높은 우선순위의 스레드의 우선순위를 비교하여 스케줄링 */
+	test_max_priority();	
 	return tid;
 }
 
@@ -237,7 +238,7 @@ thread_block (void) {
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
-/* 해당 thread를 ready list에 넣고 status도 ready로 옮겨줌 */
+/* 해당 thread를 우선순위 정렬하여 ready list에 넣고 status도 ready로 옮겨줌 */
 void
 thread_unblock (struct thread *t) {
 	enum intr_level old_level;
@@ -246,7 +247,7 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, &cmp_priority, NULL);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -300,6 +301,7 @@ thread_exit (void) {
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
+/* 무조건 run thread 재우고 ready list 우선순위 높은 thread 실행 */
 void
 thread_yield (void) {
 	struct thread *curr = thread_current ();
@@ -309,7 +311,8 @@ thread_yield (void) {
 
 	old_level = intr_disable ();		 /* interrupt 비활성화 */
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL); /* 현재 thread가 CPU를 양보하여 ready_list에 삽입 될 때 
+	우선순위 순서로 정렬되어 삽입 되도록 수정 */
 	do_schedule (THREAD_READY);			/* running thread 를 ready로 바꾸고 다음 thread를 running으로 바꿈 : 컨텍스트 스위치 작업을 수행 */
 	intr_set_level (old_level);			/* interrupt 못받는 상태로 설정하고, 이전 인터럽트 상태 반환 */
 }
@@ -366,13 +369,44 @@ void thread_awake(int64_t ticks){ 			/* ticks = 현재 시간 */
 		}
 	}
 }
- 
+
+
+/* ready_list에서 우선순위가 가장 높은 스레드와 현재 스레드의 우선순위를 비교하여 스케줄링 */
+void test_max_priority (void){
+	struct thread *curr = thread_current ();
+	struct list_elem *high = list_begin(&ready_list);	/* ready list에서 우선순위 제일 높은 것 */
+	if(high != NULL){	/* ready_list 가 비어있지 않은지 확인 : 비어있으면 error */
+		struct thread *t = list_entry(high, struct thread, elem); /* high의 structure 포인터 반환 */
+		if(t->priority > curr->priority){	/* ready list에서 제일 높은 우선순위가 현재 스레드보다 높다면 */
+			thread_yield();					/*무조건 run thread 재우고 ready list 우선순위 높은 thread 실행 */
+		}
+	}else{
+		return;
+	} 
+}
+
+
+/* 인자로 주어진 스레드들의 우선순위를 비교 */
+bool cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
+	/* list_insert_ordered() 함수에서 사용 하기 위해 정열 방법을 결정하기 위한 함수 작성 */
+	struct thread *cmp_a = list_entry(a, struct thread, elem);
+	struct thread *cmp_b = list_entry(b, struct thread, elem);     
+
+	if(cmp_a->priority > cmp_b->priority){	// a thread가 우선순위가 높으면 1 반환 
+		return true;
+	}else{
+		return false;
+	}
+}
 
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
+/* 현재 스레드의 우선 순위를 인자로 받은 NEW_PRIORITY로 설정 */
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	/* 우선순위에 따라 선점이 발생하도록 */
+	test_max_priority();
 }
 
 /* Returns the current thread's priority. */
