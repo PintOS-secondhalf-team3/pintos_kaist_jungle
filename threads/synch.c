@@ -77,7 +77,7 @@ sema_down (struct semaphore *sema) {
 
 	struct semaphore_elem *s_elem = list_entry(&thread_current()->elem, struct semaphore_elem, elem);
 	// s_elem.elem = thread_current()->elem;
-	// s_elem.semaphore = *sema;
+	// // s_elem.semaphore = *sema;
 	s_elem->sema_priority = thread_get_priority();
 	while (sema->value == 0) {
 		// list_push_back (&sema->waiters, &thread_current ()->elem);
@@ -95,12 +95,6 @@ void *aux UNUSED){
 	struct semaphore_elem *sa = list_entry(a, struct semaphore_elem, elem);
 	struct semaphore_elem *sb = list_entry(b, struct semaphore_elem, elem);
 
-	// struct list_elem *pa = list_begin(&(sa->semaphore.waiters));
-	// struct list_elem *pb = list_begin(&(sb->semaphore.waiters));
-
-	// struct thread *ta = list_entry(pa, struct thread, elem);
-	// struct thread *tb = list_entry(pb, struct thread, elem);
-
 	if (sa->sema_priority > sb->sema_priority){
 		return true;
 	}else{
@@ -116,12 +110,6 @@ void *aux UNUSED){
 
 	// list_insert_ordered (&sema->waiters, &thread_current()->elem,
 	// 	cmp_sem_priority, NULL); 
-
-	// if(sa->elem > sb->elem){	// sa->elem이 우선순위가 높으면 true 반환 
-	// 	return true;
-	// }else{
-	// 	return false;
-	// }
 }
 
 
@@ -166,12 +154,11 @@ sema_up (struct semaphore *sema) {
 		/* 스레드가 waiters list에 있는 동안 우선순위가 변경 되었을 경우를 
 		고려 하여 waiters list 를 우선순위로 정렬 */
 		list_sort(&sema->waiters, cmp_priority, NULL);
-		thread_unblock (list_entry (list_pop_front (&sema->waiters),
-					struct thread, elem));
-		sema->value++;
-	/* 우선순위에 따라 선점이 발생하도록 */
-		test_max_priority();
+		thread_unblock (list_entry (list_pop_front (&sema->waiters), struct thread, elem));
 	}
+	sema->value++;
+	/* 우선순위에 따라 선점이 발생하도록 */
+	test_max_priority();
 	intr_set_level (old_level);
 }
 
@@ -339,6 +326,7 @@ cond_wait (struct condition *cond, struct lock *lock) {
 
 	sema_init (&waiter.semaphore, 0);
 	/* condition variable의 waiters list에 우선순위 순서로 삽입되도록 수정 */
+	waiter.sema_priority = thread_get_priority();
 	list_insert_ordered (&cond->waiters, &waiter.elem, cmp_sem_priority, NULL); 
 	// list_push_back (&cond->waiters, &waiter.elem);
 	lock_release (lock);
