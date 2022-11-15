@@ -91,11 +91,16 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	uint8_t *stack;						/* 악깡버 Saved stack pointer.*/
-	int priority;                       /* Priority. */
 	struct list_elem allelem;			/* 악깡버 List element for all threads list. */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	int64_t	wakeup_tick;				/* 해당 스레드가 깨어날 시간 */
+	/* for priority donation */
+	int priority;                       /* Priority. */
+	int init_priority;                  /* donation 이후 우선순위를 초기화하기 위해 초기값 저장 */
+	struct lock *wait_on_lock; 			/* 해당 스레드가 대기 하고 있는 lock자료구조의 주소를 저장 */
+	struct list donations;				/* multiple donation 을 고려하기 위해 사용 */
+	struct list_elem donation_elem;		/* multiple donation 을 고려하기 위해 사용 */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -150,6 +155,11 @@ int64_t get_next_tick_to_awake(void); /* thread.c의 next_tick_to_awake 반환 *
 
 void test_max_priority (void);	/* 현재 수행중인 스레드와 가장 높은 우선순위의 스레드의 우선순위를 비교하여 스케줄링 */
 bool cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);	/* 인자로 주어진 스레드들의 우선순위를 비교 */
+bool cmp_don_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
+void donate_priority(void);
+void remove_with_lock(struct lock *lock); 	/* lock 을 해지 했을때 donations 리스트에서 해당 엔트리를 삭제 하기 위한 함수 */
+void refresh_priority(void);
 
 void do_iret (struct intr_frame *tf);
 
