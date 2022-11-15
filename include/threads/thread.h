@@ -155,6 +155,7 @@ int64_t get_next_tick_to_awake(void); /* thread.c의 next_tick_to_awake 반환 *
 
 void test_max_priority (void);	/* 현재 수행중인 스레드와 가장 높은 우선순위의 스레드의 우선순위를 비교하여 스케줄링 */
 bool cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);	/* 인자로 주어진 스레드들의 우선순위를 비교 */
+bool cmp_don_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 void donate_priority(void);
 void remove_with_lock(struct lock *lock); 	/* lock 을 해지 했을때 donations 리스트에서 해당 엔트리를 삭제 하기 위한 함수 */
