@@ -398,11 +398,10 @@ bool cmp_priority (const struct list_elem *a, const struct list_elem *b, void *a
 	}
 }
 
+/* 인자로 주어진 스레드의 donation_elem의 우선순위를 비교 */
 bool cmp_don_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED){
 	return list_entry(a, struct thread, donation_elem)->priority > list_entry(b,struct thread, donation_elem)->priority;
 }
-
-
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 /* 현재 스레드의 우선 순위를 인자로 받은 NEW_PRIORITY로 설정 */
@@ -412,7 +411,6 @@ thread_set_priority (int new_priority) {
 	refresh_priority();		/* 우선순위를 변경으로 인한 donation 관련 정보를 갱신*/
 	test_max_priority();	/* 우선순위에 따라 선점이 발생하도록 */
 }
-
 
 /* Returns the current thread's priority. */
 int
