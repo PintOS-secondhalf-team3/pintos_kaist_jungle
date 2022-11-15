@@ -38,6 +38,10 @@ void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
+/* 첫 번째 인자의 우선순위가 두 번째 인자의 우선순위보다 높으면 1을 반환 낮으면 0을 반환 */
+bool cmp_sem_priority (const struct list_elem *a, const struct list_elem *b,
+void *aux);
+
 /* Optimization barrier.
  *
  * The compiler will not reorder operations across an
