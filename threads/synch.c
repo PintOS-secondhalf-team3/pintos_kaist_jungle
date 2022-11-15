@@ -222,7 +222,21 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	/* 해당 lock 의 holder가 존재 한다면 아래 작업을 수행한다. */
+	/* 현재 스레드의 wait_on_lock 변수에 획득 하기를 기다리는 lock의 주소를 저장 */ 
+	if(lock->holder != NULL){
+		struct thread *cur = thread_current();
+		cur->wait_on_lock = &lock;
+		/* multiple donation 을 고려하기 위해 이전상태의 우선순위를 기억,
+		donation 을 받은 스레드의 thread 구조체를 list로 관리한다. */
+		cur->priority = cur->init_priority;
+		list_insert_ordered(&lock->holder->donations, &cur->donation_elem, cmp_priority ,NULL);
+		/* priority donation 수행하기 위해 donate_priority() 함수 호출 */
+		void donate_priority(void);
+	}
 	sema_down (&lock->semaphore);
+	thread_current()->wait_on_lock = NULL;
+	/* lock을 획득 한 후 lock holder 를 갱신한다. */
 	lock->holder = thread_current ();
 }
 
@@ -258,6 +272,10 @@ lock_release (struct lock *lock) {
 	ASSERT (lock_held_by_current_thread (lock));
 
 	lock->holder = NULL;
+	/* lock 을 해지 했을때 donations 리스트에서 해당 엔트리를 삭제 하기 위한 함수 */
+	remove_with_lock(lock);
+	/* 스레드의 우선순위가 변경 되었을때 donation 을 고려하여 우선순위를 다시 결정 하는 함수 */
+	refresh_priority();
 	sema_up (&lock->semaphore);
 }
 
