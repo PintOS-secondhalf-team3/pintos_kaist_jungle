@@ -72,6 +72,7 @@ timer_calibrate (void) {
 }
 
 /* Returns the number of timer ticks since the OS booted. */
+/* OS가 부팅된 이후 타이머 눈금 수를 반환 */
 int64_t
 timer_ticks (void) {
 	enum intr_level old_level = intr_disable ();
@@ -83,6 +84,8 @@ timer_ticks (void) {
 
 /* Returns the number of timer ticks elapsed since THEN, which
    should be a value once returned by timer_ticks(). */
+/* THEN 이후 경과된 타이머 눈금 수를 반환.
+	timer_timeout으로 반환된 값이어야함. */
 int64_t
 timer_elapsed (int64_t then) {
 	return timer_ticks () - then;
@@ -127,11 +130,23 @@ timer_print_stats (void) {
 
 /* Timer interrupt handler. */
 /* 타이머 인터럽트 핸들러 */
+/* 1초 마다 load_avg, 모든 스레드의 recent_cpu, priority 재계산 */
+/* 4 tick 마다 현재 스레드의 priority 재계산 */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;	/* OS가 부팅된 이후 타이머 틱 수 */
 	thread_tick ();
-	/* 매 tick마다 sleep queue에서 깨어날 thread가 있는지 확인하여, 깨우는 함수를 호출 */
+	/* mlfqs 스케줄러일 경우 */
+	if(thread_mlfqs){
+		mlfqs_increment();		/* timer_interrupt 가 발생할 때 마다 recuent_cpu 1 증가 */
+		if (ticks % 4 == 0){	/* 매 4tick마다 priority 계산*/
+			mlfqs_priority(thread_current());
+			if (ticks % 100 == 0){	/* 1초마다 load_avg, recent_cpu, priority 계산 */ 
+				mlfqs_recalc();
+			}
+		}
+	}
+	/* 가장 적은 tick마다 sleep queue에서 깨어날 thread가 있는지 확인하여, 깨우는 함수를 호출 */
 	if (ticks >= get_next_tick_to_awake()){
 		thread_awake(ticks); 
 	}

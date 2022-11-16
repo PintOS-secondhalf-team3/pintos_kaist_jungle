@@ -7,6 +7,13 @@
         "palloc.h": "c",
         "interrupt.h": "c",
         "synch.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "vaddr.h": "c",
+        "fixed_point.h": "c",
+        "stdio.h": "c",
+        "intr-stubs.h": "c",
+        "flags.h": "c",
+        "process.h": "c",
+        "debug.h": "c"
     }
 }

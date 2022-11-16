@@ -91,7 +91,7 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	uint8_t *stack;						/* 악깡버 Saved stack pointer.*/
-	struct list_elem allelem;			/* 악깡버 List element for all threads list. */
+	struct list_elem allelem;			/* List element for all threads list. */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	int64_t	wakeup_tick;				/* 해당 스레드가 깨어날 시간 */
@@ -101,6 +101,9 @@ struct thread {
 	struct lock *wait_on_lock; 			/* 해당 스레드가 대기 하고 있는 lock자료구조의 주소를 저장 */
 	struct list donations;				/* multiple donation 을 고려하기 위해 사용 */
 	struct list_elem donation_elem;		/* multiple donation 을 고려하기 위해 사용 */
+
+	int nice;
+	int recent_cpu;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -160,6 +163,12 @@ bool cmp_don_priority (const struct list_elem *a, const struct list_elem *b, voi
 void donate_priority(void);
 void remove_with_lock(struct lock *lock); 	/* lock 을 해지 했을때 donations 리스트에서 해당 엔트리를 삭제 하기 위한 함수 */
 void refresh_priority(void);
+
+void mlfqs_priority (struct thread *t); 	/* recent_cpu와 nice값을 이용하여 priority를 계산 */
+void mlfqs_recent_cpu (struct thread *t); 
+void mlfqs_load_avg (void);
+void mlfqs_increment (void);
+void mlfqs_recalc (void);
 
 void do_iret (struct intr_frame *tf);
 
