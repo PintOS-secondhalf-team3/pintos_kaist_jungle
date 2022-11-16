@@ -460,6 +460,7 @@ void refresh_priority(void){
 	/* 가장 우선순위가 높은 donations 리스트의 스레드와
 	현재 스레드의 우선순위를 비교하여 높은 값을 현재 스레드의 우선순위로 설정 */
 	if(list_empty(&cur->donations)== false){
+		list_sort(&cur->donations, cmp_don_priority, NULL);
 		struct thread *t = list_entry(list_front(&cur->donations), struct thread, donation_elem);
 		if(t->priority > cur->priority){	/* 가장 우선순위가 높은 donations 리스트의 스레드가 현재 스레드의 우선순위보다 높으면*/
 			cur->priority = t->priority;
