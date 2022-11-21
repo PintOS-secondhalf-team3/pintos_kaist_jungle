@@ -7,6 +7,10 @@
         "palloc.h": "c",
         "interrupt.h": "c",
         "synch.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "process.h": "c",
+        "directory.h": "c",
+        "gdt.h": "c",
+        "init.h": "c"
     }
 }

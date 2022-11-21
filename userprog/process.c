@@ -354,13 +354,13 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_){
 			memcpy(if_->rsp, &arg_address[i], sizeof(char **)); // char 포인터 크기: 8바이트
 		}	
 	}
+	if_->R.rdi  = argc;
+	if_->R.rsi = if_->rsp; // arg_address 맨 앞 가리키는 주소값
 	
 	/* fake return address */
 	if_->rsp = if_->rsp - 8; // void 포인터도 8바이트 크기
 	memset(if_->rsp, 0, sizeof(void *));
 
-	if_->R.rdi  = argc;
-	if_->R.rsi = if_->rsp + 8; // fake_address 바로 위: arg_address 맨 앞 가리키는 주소값!
 }
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
