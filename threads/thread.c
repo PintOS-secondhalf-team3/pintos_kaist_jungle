@@ -373,8 +373,8 @@ void thread_awake(int64_t ticks){ 			/* ticks = 현재 시간 */
 /* ready_list에서 우선순위가 가장 높은 스레드와 현재 스레드의 우선순위를 비교하여 스케줄링 */
 void test_max_priority (void){
 	struct thread *curr = thread_current ();
-	struct list_elem *high = list_begin(&ready_list);	/* ready list에서 우선순위 제일 높은 것 */
-	if(high != NULL){	/* ready_list 가 비어있지 않은지 확인 : 비어있으면 error */
+	if(!list_empty(&ready_list)){	/* ready_list 가 비어있지 않은지 확인 : 비어있으면 error */
+		struct list_elem *high = list_begin(&ready_list);	/* ready list에서 우선순위 제일 높은 것 */
 		struct thread *t = list_entry(high, struct thread, elem); /* high의 structure 포인터 반환 */
 		if(t->priority > curr->priority){	/* ready list에서 제일 높은 우선순위가 현재 스레드보다 높다면 */
 			thread_yield();					/*무조건 run thread 재우고 ready list 우선순위 높은 thread 실행 */
