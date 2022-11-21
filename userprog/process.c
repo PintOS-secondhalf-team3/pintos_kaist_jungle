@@ -174,7 +174,9 @@ process_exec (void *f_name) {
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
 	/* We first kill the current context */
-	process_cleanup ();
+	process_cleanup ();	// 새로운 실행 파일을 현재 스레드에 담기 전에 현재 process에 담긴 context 삭제 
+
+	memset(&_if, 0, sizeof _if);	// &_if에 _if 바이트만큼 0으로 채우기
 
 	/* And then load the binary */
 	success = load (file_name, &_if);
@@ -183,6 +185,8 @@ process_exec (void *f_name) {
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
+
+	hex_dump(_if.rsp, _if.rsp, KERN_BASE - _if.rsp, true); // for debugging
 
 	/* Start switched process. */
 	do_iret (&_if);
@@ -204,6 +208,8 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while (1){
+	}
 	return -1;
 }
 
@@ -316,6 +322,47 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
 		bool writable);
 
+// (arg_list, token_count, if_)
+void argument_stack(char **argv, int argc, struct intr_frame *if_){
+	char *arg_address[128];
+
+	/* 맨 끝 NULL 값(arg[4]) 제외하고 스택에 저장(arg[3]~arg[0]) */
+	for (int i = argc-1; i>=0; i--) { 
+		int argv_len = strlen(argv[i]); // foo 면 3
+		/* 
+		if_->rsp: 현재 user stack에서 현재 위치를 가리키는 스택 포인터.
+		각 인자에서 인자 크기(argv_len)를 읽고 (이때 각 인자에 sentinel이 포함되어 있으니 +1 - strlen에서는 sentinel 빼고 읽음)
+		그 크기만큼 rsp를 내려준다. 그 다음 빈 공간만큼 memcpy를 해준다.
+		 */
+		if_->rsp = if_->rsp - (argv_len + 1);
+		memcpy(if_->rsp, argv[i], argv_len+1);
+		arg_address[i] = if_->rsp; // arg_address 배열에 현재 문자열 시작 주소 위치를 저장한다.
+	}
+
+	/* word-align: 8의 배수 맞추기 위해 padding 삽입*/
+	while (if_->rsp % 8 != 0) {
+		if_->rsp--; // 주소값을 1 내리고
+		*(uint8_t *) if_->rsp = 0; //데이터에 0 삽입 => 8바이트 저장
+	}
+
+	/* 이제는 주소값 자체를 삽입! 이때 센티넬 포함해서 넣기*/
+	for (int i = argc; i >=0; i--) { // 여기서는 NULL 값 포인터도 같이 넣는다.
+		if_->rsp = if_->rsp - 8; // 8바이트만큼 내리고
+		if (i == argc) { // 가장 위에는 NULL이 아닌 0을 넣어야지
+			memset(if_->rsp, 0, sizeof(char **));
+		} else { // 나머지에는 arg_address 안에 들어있는 값 가져오기
+			memcpy(if_->rsp, &arg_address[i], sizeof(char **)); // char 포인터 크기: 8바이트
+		}	
+	}
+	
+	/* fake return address */
+	if_->rsp = if_->rsp - 8; // void 포인터도 8바이트 크기
+	memset(if_->rsp, 0, sizeof(void *));
+
+	if_->R.rdi  = argc;
+	if_->R.rsi = if_->rsp + 8; // fake_address 바로 위: arg_address 맨 앞 가리키는 주소값!
+}
+
 /* Loads an ELF executable from FILE_NAME into the current thread.
  * Stores the executable's entry point into *RIP
  * and its initial stack pointer into *RSP.
@@ -328,6 +375,15 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
+
+	char *argv[128];	// 커맨드 라인 길이 제한 128
+	char *token, *save_ptr;
+	int argc = 0;
+
+	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)){
+		argv[argc] = token;
+		argc ++;
+	}
 
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
@@ -416,6 +472,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	argument_stack(argv, argc, if_);
 
 	success = true;
 
