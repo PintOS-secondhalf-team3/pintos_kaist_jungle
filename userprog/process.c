@@ -185,7 +185,7 @@ process_exec (void *f_name) {
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
