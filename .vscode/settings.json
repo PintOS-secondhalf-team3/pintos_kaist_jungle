@@ -11,6 +11,9 @@
         "process.h": "c",
         "directory.h": "c",
         "gdt.h": "c",
-        "init.h": "c"
+        "init.h": "c",
+        "flags.h": "c",
+        "vaddr.h": "c",
+        "*.inc": "c"
     }
 }

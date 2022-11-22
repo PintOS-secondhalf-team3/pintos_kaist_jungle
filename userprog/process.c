@@ -179,7 +179,7 @@ process_exec (void *f_name) {
 	memset(&_if, 0, sizeof _if);	// &_if에 _if 바이트만큼 0으로 채우기
 
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (file_name, &_if); // f_name, if_.rip (function entry point), rsp(stack top : user stack)
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
