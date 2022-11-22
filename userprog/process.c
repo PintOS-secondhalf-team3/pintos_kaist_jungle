@@ -176,18 +176,16 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();	// 새로운 실행 파일을 현재 스레드에 담기 전에 현재 process에 담긴 context 삭제 
 
-	memset(&_if, 0, sizeof _if);	// &_if에 _if 바이트만큼 0으로 채우기
+	// memset(&_if, 0, sizeof(_if)); // 필요하지 않은 레지스터까지 0으로 바꿔 "#GP General Protection Exception"; 오류 발생
 
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (file_name, &_if); // f_name, if_.rip (function entry point), rsp(stack top : user stack)
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
-
-	hex_dump(_if.rsp, _if.rsp, KERN_BASE - _if.rsp, true); // for debugging
-
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -354,7 +352,7 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_){
 			memcpy(if_->rsp, &arg_address[i], sizeof(char **)); // char 포인터 크기: 8바이트
 		}	
 	}
-	if_->R.rdi  = argc;
+	if_->R.rdi = argc;
 	if_->R.rsi = if_->rsp; // arg_address 맨 앞 가리키는 주소값
 	
 	/* fake return address */
@@ -380,16 +378,25 @@ load (const char *file_name, struct intr_frame *if_) {
 	char *token, *save_ptr;
 	int argc = 0;
 
-	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)){
+	// for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)){
+	// 	argv[argc] = token;
+	// 	argc ++;
+	// }
+	token = strtok_r(file_name, " ", &save_ptr);
+	argv[argc] = token; 
+
+	while (token != NULL) {
+		token = strtok_r (NULL, " ", &save_ptr);
+		argc++;
 		argv[argc] = token;
-		argc ++;
 	}
+
 
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
 		goto done;
-	process_activate (thread_current ());
+	process_activate (t);
 
 	/* Open executable file. */
 	file = filesys_open (file_name);
