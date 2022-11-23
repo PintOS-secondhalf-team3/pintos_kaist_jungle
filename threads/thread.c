@@ -209,13 +209,11 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-	// t->parent_fd = thread_current()->tid; 	/* 부모 프로세스 저장 */
-	// t->is_mem_load = false;	/* 프로그램이 로드되지 않음 */
-	// t->is_proc_off = false;	/* 프로세스가 종료되지 않음 */
-	// // sema_init(&t->sema_exit, 0); /* exit 세마포어 0으로 초기화 */ 
-	// // sema_init(&t->sema_load, 0); /* load 세마포어 0으로 초기화 */ 
-	// t->child_elem;
-	// t->childs ;/* 자식 리스트에 추가 */
+	t->parent = thread_current()->tid; 	/* 부모 프로세스 저장 */
+	t->is_mem_load = false;	/* 프로그램이 로드되지 않음 */
+	t->is_proc_off = false;	/* 프로세스가 종료되지 않음 */
+	t->child_elem;
+	list_push_back (&t->parent->childs, &t->child_elem);	/* 부모의 자식 리스트에 추가 */
 
 	/* 실행 대기열에 추가 */
 	thread_unblock (t);
@@ -295,8 +293,10 @@ thread_tid (void) {
 void
 thread_exit (void) {
 	ASSERT (!intr_context ());
-
+	
 #ifdef USERPROG
+	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
+	sema_up (&thread_current()->parent->sema_exit);	// 현재가 자식. 부모의 thread안의 sema up
 	process_exit ();
 #endif
 
@@ -573,7 +573,11 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	list_init (&t->donations);
-	// list_init (&t->childs);				/* 자식 리스트 초기화 */
+	list_init (&t->childs);				/* 자식 리스트 초기화 */
+
+	sema_init(&t->sema_exit, 0); /* exit 세마포어 0으로 초기화 */ 
+	sema_init(&t->sema_load, 0); /* load 세마포어 0으로 초기화 */ 
+	t->exit_status;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
