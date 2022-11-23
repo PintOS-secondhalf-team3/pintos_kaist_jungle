@@ -194,6 +194,31 @@ process_exec (void *f_name) {
 	NOT_REACHED ();
 }
 
+/* 자식 리스트를 pid로 검색하여 해당 프로세스 디스크립터를 반환 & pid가 없을 경우 NULL 반환 */
+struct thread *get_child_process (int pid) {
+	/* 자식 리스트에 접근하여 프로세스 디스크립터 검색 */ 
+	struct thread *cur = thread_current();
+	// 자식 리스트에서 pid에 맞는 list_elem 찾기
+	struct list_elem *child = list_begin(&cur->childs);
+	while(child != list_end(&cur->childs)){
+		struct thread *target = list_entry(child, struct thread, elem);
+		if(target->tid == pid){	/* 해당 pid가 존재하면 프로세스 디스크립터 반환 */ 
+			return target;
+		}else{
+			target = list_next(target);	
+		}
+	}
+	return NULL;	/* 리스트에 존재하지 않으면 NULL 리턴 */
+}
+
+/* 부모 프로세스의 자식 리스트에서 프로세스 디스크립터 제거 & 프로세스 디스크립터 메모리 해제
+*/
+void remove_child_process(struct thread *cp) {
+	/* 자식 리스트에서 제거*/
+	list_remove(&cp->child_elem);
+	/* 프로세스 디스크립터 메모리 해제 */
+}
+
 
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
@@ -204,15 +229,28 @@ process_exec (void *f_name) {
  *
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
+/* 자식 프로세스가 종료될 때까지 부모 프로세스 대기 */
 int
 process_wait (tid_t child_tid UNUSED) {
+	/* 자식프로세스가 모두 종료될 때까지 대기(sleep state) 
+	자식 프로세스가 올바르게 종료 됐는지 확인 */
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	// while (1){
-	// }
-	thread_set_priority(thread_get_priority() - 1);
-	return -1;
+	/* 자식 프로세스의 프로세스 디스크립터 검색 */
+	struct thread * child = get_child_process(child_tid); /* 자식 리스트를 검색하여 프로세스 디스크립터의 주소 리턴 */
+	if(child == NULL){	/* 예외 처리 발생시 -1 리턴 */
+		return -1;
+	}
+	/* 자식프로세스가 종료될 때까지 현재(부모) 프로세스 대기(세마포어 이용) */ 
+	struct thread * cur = thread_current();
+	sema_down(&cur->sema_exit);
+	/* 자식 프로세스 디스크립터 삭제 */
+	/* -------------------- 부모가 깸 ---------------------- */
+	remove_child_process(child); 	/* 프로세스 디스크립터를 자식 리스트에서 제거 후 메모리 해제 */
+	/* 자식 프로세스의 exit status 리턴 */
+	return child->exit_status;
+	// thread_set_priority(thread_get_priority() - 1);
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -223,7 +261,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	
 	process_cleanup ();
 }
 

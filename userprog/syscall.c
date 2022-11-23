@@ -18,6 +18,7 @@ void exit (int status);
 bool create (const char *file, unsigned initial_size);
 bool remove (const char *file);
 int write (int fd, const void *buffer, unsigned size); 
+int wait (tid_t pid);
 // void seek (int fd, unsigned position);
 // int exec (const char *file);
 // int read (int fd, void *buffer, unsigned size);
@@ -89,6 +90,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_WRITE:
 			write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		case SYS_WAIT:
+			wait(f->R.rdi);
+			break;
 		// case SYS_SEEK:
 		// 	seek(f->R.rdi, f->R.rsi);
 		// 	break;
@@ -108,7 +112,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 
 	//thread_exit ();
 	//printf ("system call!\n");
-
 }
 
 
@@ -121,8 +124,26 @@ void
 exit (int status) {
 	struct thread *cur = thread_current();
 	/* 프로세스 디스크립터에 exit status 저장 */ 
+	cur->exit_status = status;
 	printf("%s: exit(%d)\n" , cur->name , status); 
 	thread_exit();
+}
+
+// pid_t=
+// fork (const char *thread_name){
+// 	return (pid_t) syscall1 (SYS_FORK, thread_name);
+// }
+
+// int
+// exec (const char *file) {
+// 	return (pid_t) syscall1 (SYS_EXEC, file);
+// }
+
+int
+wait (tid_t pid) {
+	/* 자식 프로세스가 종료 될 때까지 대기 */
+	/* process_wait()사용 */
+	return process_wait (pid);
 }
 
 bool
