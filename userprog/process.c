@@ -50,6 +50,9 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	char *token, *ptr;
+	for(token = strtok_r(file_name, " ", &ptr); token != NULL; token = strtok_r(NULL, " ", &ptr));
+
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
@@ -185,7 +188,7 @@ process_exec (void *f_name) {
 	palloc_free_page (file_name);
 	if (!success)
 		return -1;
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
+	//hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -206,8 +209,9 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	while (1){
-	}
+	// while (1){
+	// }
+	thread_set_priority(thread_get_priority() - 1);
 	return -1;
 }
 

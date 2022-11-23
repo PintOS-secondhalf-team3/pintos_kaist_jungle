@@ -209,6 +209,14 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	// t->parent_fd = thread_current()->tid; 	/* 부모 프로세스 저장 */
+	// t->is_mem_load = false;	/* 프로그램이 로드되지 않음 */
+	// t->is_proc_off = false;	/* 프로세스가 종료되지 않음 */
+	// // sema_init(&t->sema_exit, 0); /* exit 세마포어 0으로 초기화 */ 
+	// // sema_init(&t->sema_load, 0); /* load 세마포어 0으로 초기화 */ 
+	// t->child_elem;
+	// t->childs ;/* 자식 리스트에 추가 */
+
 	/* 실행 대기열에 추가 */
 	thread_unblock (t);
 	/* 현재 수행중인 스레드와 가장 높은 우선순위의 스레드의 우선순위를 비교하여 스케줄링 */
@@ -559,11 +567,13 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+	// list_push_back (&all_list, &t->allelem);			/*악깡버*/
 
 	/* Priority donation 관련 자료구조 초기화 */
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
 	list_init (&t->donations);
+	// list_init (&t->childs);				/* 자식 리스트 초기화 */
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
