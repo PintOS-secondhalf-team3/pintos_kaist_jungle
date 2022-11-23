@@ -59,7 +59,8 @@ check_address(void *addr) {
 /* 1. 포인터가 가리키는 주소가 유저영역의 주소인지 확인 */
 /* 2. 포인터가 가리키는 주소가 존재하는지 확인 */
 /* 3. 포인터가 가리키는 주소에 해당하는 실주소가 없는 경우 NULL 반환 */
-	if(!is_user_vaddr(addr) || addr == NULL ){
+// || pml4_get_page(cur->pml4, addr) == NULL
+	if(!is_user_vaddr(addr) || addr == NULL || pml4_get_page(cur->pml4, addr) == NULL){
 		exit(-1);
 	}
 /* 잘못된 접근일 경우 프로세스 종료 */ 
@@ -70,7 +71,7 @@ void
 syscall_handler (struct intr_frame *f UNUSED) {
 	/* 유저 스택에 저장되어 있는 시스템 콜 넘버를 이용해 시스템 콜 핸들러 구현 */
 	int sys_num = f->R.rax;
-	check_address(sys_num);  /* 스택 포인터가 유저 영역인지 확인 */
+	// check_address(sys_num);  /* 스택 포인터가 유저 영역인지 확인 */
 
 	switch (sys_num){
 		case SYS_HALT:
@@ -102,7 +103,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		// 	break;
 		// case SYS_CLOSE:
 		// 	close(f->R.rdi);
-		// 	break;
+		break;
 	}
 
 	//thread_exit ();
@@ -128,26 +129,16 @@ bool
 create (const char *file, unsigned initial_size) {
 	check_address(file);
 	/* 파일 이름과 크기에 해당하는 파일 생성 */
-	bool success = filesys_create(file, initial_size);
 	/* 파일 생성 성공 시 true 반환, 실패 시 false 반환 */
-	if(success){
-		return true;
-	}else{
-		return false;
-	}
+	return filesys_create(file, initial_size);
 }
 
 bool
 remove (const char *file) {
 	check_address(file);
 	/* 파일 이름에 해당하는 파일을 제거 */
-	bool success = filesys_remove(file);
 	/* 파일 제거 성공 시 true 반환, 실패 시 false 반환 */
-	if(success){
-		return true;
-	}else{
-		return false;
-	}
+	return filesys_remove(file);
 }
 
 // void
@@ -176,7 +167,6 @@ write (int fd, const void *buffer, unsigned size) {
 		putbuf(buffer, size);
 		return size;
 	}
-	// return syscall3 (SYS_WRITE, fd, buffer, size);
 }
 
 // void
