@@ -17,6 +17,7 @@ void halt (void);
 void exit (int status);
 bool create (const char *file, unsigned initial_size);
 bool remove (const char *file);
+int write (int fd, const void *buffer, unsigned size); 
 // void seek (int fd, unsigned position);
 // int exec (const char *file);
 // int read (int fd, void *buffer, unsigned size);
@@ -84,6 +85,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_REMOVE:
 			remove(f->R.rdi);
 			break;
+		case SYS_WRITE:
+			write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
 		// case SYS_SEEK:
 		// 	seek(f->R.rdi, f->R.rsi);
 		// 	break;
@@ -101,8 +105,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		// 	break;
 	}
 
-	printf ("system call!\n");
-	thread_exit ();
+	//thread_exit ();
+	//printf ("system call!\n");
 
 }
 
@@ -166,10 +170,14 @@ remove (const char *file) {
 // 	return syscall3 (SYS_READ, fd, buffer, size);
 // }
 
-// int
-// write (int fd, const void *buffer, unsigned size) {
-// 	return syscall3 (SYS_WRITE, fd, buffer, size);
-// }
+int
+write (int fd, const void *buffer, unsigned size) {
+	if (fd == 1) {
+		putbuf(buffer, size);
+		return size;
+	}
+	// return syscall3 (SYS_WRITE, fd, buffer, size);
+}
 
 // void
 // close (int fd) {
