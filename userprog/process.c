@@ -205,7 +205,7 @@ struct thread *get_child_process (int pid) {
 		if(target->tid == pid){	/* 해당 pid가 존재하면 프로세스 디스크립터 반환 */ 
 			return target;
 		}else{
-			target = list_next(target);	
+			child = list_next(child);	
 		}
 	}
 	return NULL;	/* 리스트에 존재하지 않으면 NULL 리턴 */
@@ -249,6 +249,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* -------------------- 부모가 깸 ---------------------- */
 	remove_child_process(child); 	/* 프로세스 디스크립터를 자식 리스트에서 제거 후 메모리 해제 */
 	/* 자식 프로세스의 exit status 리턴 */
+
 	return child->exit_status;
 	// thread_set_priority(thread_get_priority() - 1);
 }

@@ -209,7 +209,8 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-	t->parent = thread_current()->tid; 	/* 부모 프로세스 저장 */
+	struct thread *cur = thread_current();
+	t->parent = cur; 	/* 부모 프로세스 저장 */
 	t->is_mem_load = false;	/* 프로그램이 로드되지 않음 */
 	t->is_proc_off = false;	/* 프로세스가 종료되지 않음 */
 	t->child_elem;
