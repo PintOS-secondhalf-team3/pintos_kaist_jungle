@@ -15,6 +15,9 @@
         "flags.h": "c",
         "vaddr.h": "c",
         "*.inc": "c",
-        "main.h": "c"
+        "main.h": "c",
+        "file.h": "c",
+        "filesys.h": "c",
+        "stdlib.h": "c"
     }
 }

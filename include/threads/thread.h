@@ -1,6 +1,9 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 
+#define FDT_PAGES 3
+#define MAX_FD_NUM FDT_PAGES *(1 << 9)
+
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -126,8 +129,9 @@ struct thread
 	struct list childs;			 /* 자식 리스트 */
 	// bool is_mem_load;					/* 프로세스의 프로그램 메모리 적재 유무 */
 	// bool is_proc_off; 					/* 프로세스가 종료 유무 확인 */
-	struct semaphore exit_sema; /* exit 세마포어 */
 	struct semaphore fork_sema; /* fork 세마포어 */
+	struct semaphore wait_sema; /* exit 세마포어 */
+	struct semaphore free_sema; /* free 세마포어 */
 	int exit_status;			/* exit 호출 시 종료 status */
 };
 
