@@ -144,6 +144,7 @@ pdp_for_each (uint64_t *pdp,
 }
 
 /* Apply FUNC to each available pte entries including kernel's. */
+/* 커널을 포함하여 사용 가능한 각 pte 항목에 FUNC를 적용 */
 bool
 pml4_for_each (uint64_t *pml4, pte_for_each_func *func, void *aux) {
 	for (unsigned i = 0; i < PGSIZE / sizeof(uint64_t *); i++) {
@@ -230,6 +231,10 @@ pml4_get_page (uint64_t *pml4, const void *uaddr) {
  * otherwise it is read-only.
  * Returns true if successful, false if memory allocation
  * failed. */
+/* 사용자 가상 페이지 UPAGE에서 커널 가상 주소 KPAGE로 식별된 물리적 프레임으로 PML4의 매핑 추가.
+	UPAGE가 아직 매핑되지 않아야함. KPAGE는 아마도 palloc_get_page()를 가진 사용자 풀에서 얻은 페이지이기에.
+	쓰기 가능이 참이면 새 페이지는 읽기/쓰기이며, 그렇지 않으면 읽기 전용
+	성공하면 true를 반환하고, 메모리 할당이 실패하면 false를 반환 */
 bool
 pml4_set_page (uint64_t *pml4, void *upage, void *kpage, bool rw) {
 	ASSERT (pg_ofs (upage) == 0);

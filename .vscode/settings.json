@@ -14,6 +14,7 @@
         "init.h": "c",
         "flags.h": "c",
         "vaddr.h": "c",
-        "*.inc": "c"
+        "*.inc": "c",
+        "main.h": "c"
     }
 }

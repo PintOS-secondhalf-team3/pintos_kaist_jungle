@@ -6,6 +6,7 @@
 #include "threads/loader.h"
 #include "userprog/gdt.h"
 #include "threads/flags.h"
+#include "threads/palloc.h"
 #include "intrinsic.h"
 #include "filesys/filesys.h"
 
@@ -18,8 +19,10 @@ void exit (int status);
 bool create (const char *file, unsigned initial_size);
 bool remove (const char *file);
 int write (int fd, const void *buffer, unsigned size); 
+int wait (tid_t pid);
+tid_t fork (const char *thread_name, struct intr_frame *f);
 // void seek (int fd, unsigned position);
-// int exec (const char *file);
+int exec (const char *file);
 // int read (int fd, void *buffer, unsigned size);
 // int open (const char *file);
 // void close (int fd);
@@ -89,12 +92,18 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_WRITE:
 			write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		case SYS_WAIT:
+			f->R.rax = wait(f->R.rdi);
+			break;
+		case SYS_FORK:
+			f->R.rax = fork(f->R.rdi, f);
+			break;
 		// case SYS_SEEK:
 		// 	seek(f->R.rdi, f->R.rsi);
 		// 	break;
-		// case SYS_EXEC:
-		// 	exec(f->R.rdi);
-		// 	break;
+		case SYS_EXEC:
+			exec(f->R.rdi);
+			break;
 		// case SYS_READ:
 		// 	read(f->R.rdi, f->R.rsi, f->R.rdx);
 		// 	break;
@@ -108,7 +117,6 @@ syscall_handler (struct intr_frame *f UNUSED) {
 
 	//thread_exit ();
 	//printf ("system call!\n");
-
 }
 
 
@@ -121,8 +129,21 @@ void
 exit (int status) {
 	struct thread *cur = thread_current();
 	/* 프로세스 디스크립터에 exit status 저장 */ 
+	cur->exit_status = status;
 	printf("%s: exit(%d)\n" , cur->name , status); 
 	thread_exit();
+}
+
+// int
+// exec (const char *file) {
+// 	return (pid_t) syscall1 (SYS_EXEC, file);
+// }
+
+int
+wait (tid_t pid) {
+	/* 자식 프로세스가 종료 될 때까지 대기 */
+	/* process_wait()사용 */
+	return process_wait (pid);
 }
 
 bool
@@ -145,10 +166,26 @@ remove (const char *file) {
 // seek (int fd, unsigned position) {
 // }
 
-// int
-// exec (const char *file) {
-	
-// }
+/* 자식 프로세스를 생성하고 프로그램을 실행시키는 시스템 콜 */
+int
+exec (const char *file) {
+	check_address(file);
+	int size = strlen(file) +1 ; // 마지막 null값이라 +1
+	char *fn_copy = palloc_get_page(PAL_ZERO);
+	if ((fn_copy) == NULL){
+		exit(-1);
+	}	
+	strlcpy(fn_copy, file, size);
+	/* process_execute() 함수를 호출하여 자식 프로세스 생성 */ 
+	if (process_exec(fn_copy) == -1){
+	/* 생성된 자식 프로세스의 프로세스 디스크립터를 검색 */
+	/* 자식 프로세스의 프로그램이 적재될 때까지 대기 */
+		/* 프로그램 적재 실패 시 -1 리턴 */
+		return -1;
+	}
+	/* 프로그램 적재 성공 시 자식 프로세스의 pid 리턴 */
+	NOT_REACHED();
+}
 
 // int
 // open (const char *file) {
@@ -167,6 +204,13 @@ write (int fd, const void *buffer, unsigned size) {
 		putbuf(buffer, size);
 		return size;
 	}
+}
+
+/* 현재 프로세스의 복제본으로 자식 프로세스를 생성 */
+tid_t
+fork (const char *thread_name, struct intr_frame *f){
+	process_fork(thread_name, f);
+	return 0;
 }
 
 // void
