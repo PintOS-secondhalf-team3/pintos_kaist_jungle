@@ -102,7 +102,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		// 	seek(f->R.rdi, f->R.rsi);
 		// 	break;
 		case SYS_EXEC:
-			exec(f->R.rdi);
+			if(exec(f->R.rdi) == -1){
+				exit(-1);
+			}
 			break;
 		// case SYS_READ:
 		// 	read(f->R.rdi, f->R.rsi, f->R.rdx);
@@ -178,13 +180,12 @@ exec (const char *file) {
 	strlcpy(fn_copy, file, size);
 	/* process_execute() 함수를 호출하여 자식 프로세스 생성 */ 
 	if (process_exec(fn_copy) == -1){
-	/* 생성된 자식 프로세스의 프로세스 디스크립터를 검색 */
-	/* 자식 프로세스의 프로그램이 적재될 때까지 대기 */
 		/* 프로그램 적재 실패 시 -1 리턴 */
 		return -1;
 	}
 	/* 프로그램 적재 성공 시 자식 프로세스의 pid 리턴 */
 	NOT_REACHED();
+	return 0;
 }
 
 // int
