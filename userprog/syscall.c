@@ -136,16 +136,10 @@ exit (int status) {
 	thread_exit();
 }
 
-// int
-// exec (const char *file) {
-// 	return (pid_t) syscall1 (SYS_EXEC, file);
-// }
-
 int
 wait (tid_t pid) {
 	/* 자식 프로세스가 종료 될 때까지 대기 */
-	/* process_wait()사용 */
-	return process_wait (pid);
+	return process_wait(pid);
 }
 
 bool

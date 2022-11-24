@@ -1,7 +1,9 @@
 #ifndef FILESYS_FILE_H
 #define FILESYS_FILE_H
-#define MAX_FD_NUM 64
 #include "filesys/off_t.h"
+
+#define FDT_PAGES 3
+#define MAX_FD_NUM FDT_PAGES *(1 << 9)
 
 struct inode;
 

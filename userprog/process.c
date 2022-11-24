@@ -78,21 +78,17 @@ initd(void *f_name)
 }
 
 /* 자식 리스트를 pid로 검색하여 해당 프로세스 디스크립터를 반환 & pid가 없을 경우 NULL 반환 */
-struct thread *get_child(int pid)
-{
+struct thread *get_child(int pid){
 	/* 자식 리스트에 접근하여 프로세스 디스크립터 검색 */
 	struct thread *cur = thread_current();
 	// 자식 리스트에서 pid에 맞는 list_elem 찾기
 	struct list_elem *child = list_begin(&cur->childs);
-	while (child != list_end(&cur->childs))
-	{
+	while (child != list_end(&cur->childs)){
 		struct thread *target = list_entry(child, struct thread, child_elem);
-		if (target->tid == pid)
-		{ /* 해당 pid가 존재하면 프로세스 디스크립터 반환 */
+		if (target->tid == pid){ /* 해당 pid가 존재하면 프로세스 디스크립터 반환 */
 			return target;
 		}
-		else
-		{
+		else{
 			child = list_next(child);
 		}
 	}
@@ -126,6 +122,8 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED){
 	}
 	struct thread *child = get_child(pid);
 	sema_down(&child->fork_sema); // fork_sema가 1이 될 때까지(=자식 스레드 load 완료될 때까지) 기다렸다가
+	if (child->exit_status == -1)
+		return TID_ERROR;
 	return pid;	// 끝나면 pid 반환
 }
 
@@ -144,7 +142,7 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately.
 	부모의 page가 kernel page인 경우 즉시 false를 리턴한다*/
-	if is_kernel_vaddr(va) {
+	if (is_kernel_vaddr(va)){
 		return false;
 	}
 	/* 2. Resolve VA from the parent's page map level 4. 
@@ -196,10 +194,12 @@ __do_fork(void *aux){
 	struct thread *current = thread_current();
 	/* TODO: somehow pass the parent_if. (i.e. process_fork()'s if_) */
 	struct intr_frame *parent_if;
+	parent_if = &parent->parent_if;
 	bool succ = true;
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy(&if_, parent_if, sizeof(struct intr_frame));
+	if_.R.rax = 0; // fork return value for child
 
 	/* 2. Duplicate PT */
 	current->pml4 = pml4_create();
@@ -294,7 +294,7 @@ struct thread *get_child_process (int pid) {
 	// 자식 리스트에서 pid에 맞는 list_elem 찾기
 	struct list_elem *child = list_begin(&cur->childs);
 	while(child != list_end(&cur->childs)){
-		struct thread *target = list_entry(child, struct thread, elem);
+		struct thread *target = list_entry(child, struct thread, child_elem);
 		if(target->tid == pid){	/* 해당 pid가 존재하면 프로세스 디스크립터 반환 */ 
 			return target;
 		}else{
@@ -322,31 +322,29 @@ void remove_child_process(struct thread *cp) {
  *
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
-int process_wait(tid_t child_tid UNUSED)
-{
-	// /* 자식프로세스가 모두 종료될 때까지 대기(sleep state)
-	// 자식 프로세스가 올바르게 종료 됐는지 확인 */
-	// /* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
-	//  * XXX:       to add infinite loop here before
-	//  * XXX:       implementing the process_wait. */
-	// /* 자식 프로세스의 프로세스 디스크립터 검색 */
-	// struct thread * child = get_child(child_tid); /* 자식 리스트를 검색하여 프로세스 디스크립터의 주소 리턴 */
-	// if(child == NULL){	/* 예외 처리 발생시 -1 리턴 */
-	// 	return -1;
-	// }
-	// /* 자식프로세스가 종료될 때까지 현재(부모) 프로세스 대기(세마포어 이용) */
+int process_wait(tid_t child_tid UNUSED){
+	/* 자식프로세스가 모두 종료될 때까지 대기(sleep state)
+	자식 프로세스가 올바르게 종료 됐는지 확인 */
+	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
+	 * XXX:       to add infinite loop here before
+	 * XXX:       implementing the process_wait. */
+	/* 자식 프로세스의 프로세스 디스크립터 검색 */
+	struct thread * child = get_child(child_tid); /* 자식 리스트를 검색하여 프로세스 디스크립터의 주소 리턴 */
+	if(child == NULL){	/* 예외 처리 발생시 -1 리턴 */
+		return -1;
+	}
+	/* 자식프로세스가 종료될 때까지 현재(부모) 프로세스 대기(세마포어 이용) */
 	// struct thread * cur = thread_current();
-	// sema_down(&cur->fork_sema);
-	// /* 자식 프로세스 디스크립터 삭제 */
-	// /* --------------------누군가가 sema up을 해줘서 부모(자신)가 깸 ---------------------- */
-	// remove_child_process(child); 	/* 프로세스 디스크립터를 자식 리스트에서 제거 후 메모리 해제 */
-	// /* 자식 프로세스의 exit status 리턴 */
-
-	// return child->exit_status;
-	// // thread_set_priority(thread_get_priority() - 1);
-
-	thread_set_priority(thread_get_priority() - 1);
-	return -1;
+	sema_down(&child->wait_sema); // 자식을 sema를 다운시키지만(실제 다운되진 않고), sema_down 속 thread_block보면 현재 (부모)를 block
+	/* 자식 프로세스 디스크립터 삭제 */
+	/* --------------------누군가가 sema up을 해줘서 부모(자신)가 깸 ---------------------- */
+	int exit_status = child->exit_status;
+	remove_child_process(child); 	/* 프로세스 디스크립터를 자식 리스트에서 제거 후 메모리 해제 */
+	/* 자식 프로세스의 exit status 리턴 */
+	sema_up(&child->free_sema);
+	return exit_status;
+	// thread_set_priority(thread_get_priority() - 1);
+	// return -1;
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -357,8 +355,10 @@ void process_exit(void)
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	
 	process_cleanup ();
+	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
+	sema_up (&curr->wait_sema);	// 현재가 자식 wait_sema up
+	sema_down (&curr->free_sema); 
 }
 
 /* Free the current process's resources. */
