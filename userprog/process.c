@@ -79,6 +79,10 @@ initd (void *f_name) {
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
+	struct thread *parent = thread_current();
+	memcpy (&parent->tf, if_, sizeof(struct intr_frame)); // 부모 프로세스 메모리를 복사 parent->tf 가 parent_if일수있음
+
+	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, parent);
 	return thread_create (name,
 			PRI_DEFAULT, __do_fork, thread_current ());
 }
