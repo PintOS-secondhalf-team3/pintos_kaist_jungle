@@ -1,6 +1,9 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
 
+#define FDT_PAGES 3
+#define MAX_FD_NUM FDT_PAGES *(1 << 9)
+
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>

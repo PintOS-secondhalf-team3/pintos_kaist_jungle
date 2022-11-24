@@ -26,6 +26,7 @@ static void process_cleanup(void);
 static bool load(const char *file_name, struct intr_frame *if_);
 static void initd(void *f_name);
 static void __do_fork(void *);
+struct thread *get_child(int pid);
 
 /* General process initializer for initd and other process. */
 static void
@@ -110,11 +111,9 @@ struct thread *get_child(int pid){
 				 부모 프로세스가 갖고 있던 레지스터 정보를 담아 고대로 복사해야 해서 */
 tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED){
 	/* Clone current thread to new thread.*/
-
 	/* project 2 fork */
 	struct thread *parent = thread_current();
 	memcpy(&parent->parent_if, if_, sizeof(struct intr_frame)); //  parent_if에는 유저 스택 정보 담기
-
 	/* 자식 프로세스 생성 */
 	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, parent); // process_fork의 인자로 받은 name으로 __do_fork() 진행
 	if (pid == TID_ERROR){
@@ -141,9 +140,9 @@ duplicate_pte(uint64_t *pte, void *va, void *aux)
 	bool writable;
 
 	/* 1. TODO: If the parent_page is kernel page, then return immediately.
-	부모의 page가 kernel page인 경우 즉시 false를 리턴한다*/
+	부모의 page가 kernel page인 경우 즉시 리턴 */
 	if (is_kernel_vaddr(va)){
-		return false;
+		return true;
 	}
 	/* 2. Resolve VA from the parent's page map level 4. 
 	부모 스레드 내 멤버인 pml4를 이용해 부모 페이지를 불러온다. 이때, pml4_get_page() 함수를 이용한다.*/
@@ -229,19 +228,17 @@ __do_fork(void *aux){
 		goto error;
 	}
 
-	current->fd_table[0] = parent->fd_table[0];
-	current->fd_table[1] = parent->fd_table[1];
 	for (int i = 2; i < MAX_FD_NUM; i++){
 		struct file *f = parent->fd_table[i];
 		if (f == NULL){
 			continue;
 		}
+
 		current->fd_table[i] = file_duplicate(f);
 	}
 
 	current->fdidx = parent->fdidx;	
 	sema_up(&current->fork_sema);
-	if_.R.rax = 0;
 	process_init();
 
 	/* Finally, switch to the newly created process. */
@@ -287,22 +284,22 @@ int process_exec(void *f_name)
 	NOT_REACHED();
 }
 
-/* 자식 리스트를 pid로 검색하여 해당 프로세스 디스크립터를 반환 & pid가 없을 경우 NULL 반환 */
-struct thread *get_child_process (int pid) {
-	/* 자식 리스트에 접근하여 프로세스 디스크립터 검색 */ 
-	struct thread *cur = thread_current();
-	// 자식 리스트에서 pid에 맞는 list_elem 찾기
-	struct list_elem *child = list_begin(&cur->childs);
-	while(child != list_end(&cur->childs)){
-		struct thread *target = list_entry(child, struct thread, child_elem);
-		if(target->tid == pid){	/* 해당 pid가 존재하면 프로세스 디스크립터 반환 */ 
-			return target;
-		}else{
-			child = list_next(child);	
-		}
-	}
-	return NULL;	/* 리스트에 존재하지 않으면 NULL 리턴 */
-}
+// /* 자식 리스트를 pid로 검색하여 해당 프로세스 디스크립터를 반환 & pid가 없을 경우 NULL 반환 */
+// struct thread *get_child_process (int pid) {
+// 	/* 자식 리스트에 접근하여 프로세스 디스크립터 검색 */ 
+// 	struct thread *cur = thread_current();
+// 	// 자식 리스트에서 pid에 맞는 list_elem 찾기
+// 	struct list_elem *child = list_begin(&cur->childs);
+// 	while(child != list_end(&cur->childs)){
+// 		struct thread *target = list_entry(child, struct thread, child_elem);
+// 		if(target->tid == pid){	/* 해당 pid가 존재하면 프로세스 디스크립터 반환 */ 
+// 			return target;
+// 		}else{
+// 			child = list_next(child);	
+// 		}
+// 	}
+// 	return NULL;	/* 리스트에 존재하지 않으면 NULL 리턴 */
+// }
 
 /* 부모 프로세스의 자식 리스트에서 프로세스 디스크립터 제거 & 프로세스 디스크립터 메모리 해제
 */

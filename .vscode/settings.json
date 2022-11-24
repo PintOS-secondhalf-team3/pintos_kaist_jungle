@@ -17,6 +17,7 @@
         "*.inc": "c",
         "main.h": "c",
         "file.h": "c",
-        "filesys.h": "c"
+        "filesys.h": "c",
+        "stdlib.h": "c"
     }
 }

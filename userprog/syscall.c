@@ -9,6 +9,8 @@
 #include "threads/palloc.h"
 #include "intrinsic.h"
 #include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "userprog/process.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -24,7 +26,8 @@ tid_t fork (const char *thread_name, struct intr_frame *f);
 // void seek (int fd, unsigned position);
 int exec (const char *file);
 // int read (int fd, void *buffer, unsigned size);
-// int open (const char *file);
+int open (const char *file);
+int add_file_to_fd_table(struct file *file);
 // void close (int fd);
 
 /* System call.
@@ -84,13 +87,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi);
 			break;
 		case SYS_CREATE:
-			create(f->R.rdi, f->R.rsi);
+			f->R.rax = create(f->R.rdi, f->R.rsi);
 			break;
 		case SYS_REMOVE:
-			remove(f->R.rdi);
+			f->R.rax = remove(f->R.rdi);
 			break;
 		case SYS_WRITE:
-			write(f->R.rdi, f->R.rsi, f->R.rdx);
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
@@ -109,15 +112,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		// case SYS_READ:
 		// 	read(f->R.rdi, f->R.rsi, f->R.rdx);
 		// 	break;
-		// case SYS_OPEN:
-		// 	open(f->R.rdi);
-		// 	break;
+		case SYS_OPEN:
+			f->R.rax = open(f->R.rdi);
+			break;
 		// case SYS_CLOSE:
 		// 	close(f->R.rdi);
 		break;
 	}
 
-	//thread_exit ();
+	// thread_exit ();
 	//printf ("system call!\n");
 }
 
@@ -182,10 +185,36 @@ exec (const char *file) {
 	return 0;
 }
 
-// int
-// open (const char *file) {
-// 	return syscall1 (SYS_OPEN, file);
-// }
+ /* 파일을 현재 프로세스의 fdt에 추가 */
+int 
+add_file_to_fdt(struct file *file){
+	struct thread *cur = thread_current();
+	struct file **cur_fd_table = cur->fd_table;
+	for (int i = cur->fdidx; i < MAX_FD_NUM; i++){
+		if (cur_fd_table[i] == NULL){
+			cur_fd_table[i] = file;
+			cur->fdidx = i;
+			return cur->fdidx;
+		}
+	}
+	cur->fdidx = MAX_FD_NUM;
+	return -1;
+}
+
+int
+open (const char *file) {
+/* 성공 시 fd를 생성하고 반환, 실패 시 -1 반환 */
+	struct file *open_file = filesys_open (file);
+	if(open_file == NULL){
+		return -1;
+	}
+	int fd = add_file_to_fdt(open_file);
+
+	if (fd == -1){ // fd table 가득 찼다면
+		file_close(open_file);
+	}
+	return fd;
+}
 
 
 // int
@@ -204,8 +233,7 @@ write (int fd, const void *buffer, unsigned size) {
 /* 현재 프로세스의 복제본으로 자식 프로세스를 생성 */
 tid_t
 fork (const char *thread_name, struct intr_frame *f){
-	process_fork(thread_name, f);
-	return 0;
+	return process_fork(thread_name, f);
 }
 
 // void
