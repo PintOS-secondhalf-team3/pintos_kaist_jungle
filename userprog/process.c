@@ -527,10 +527,6 @@ load(const char *file_name, struct intr_frame *if_)
 	char *token, *save_ptr;
 	int argc = 0;
 
-	// for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)){
-	// 	argv[argc] = token;
-	// 	argc ++;
-	// }
 	token = strtok_r(file_name, " ", &save_ptr);
 	argv[argc] = token;
 
