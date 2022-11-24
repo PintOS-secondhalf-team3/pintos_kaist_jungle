@@ -25,7 +25,7 @@
    By default, half of system RAM is given to the kernel pool and
    half to the user pool.  That should be huge overkill for the
    kernel pool, but that's just fine for demonstration purposes. */
-
+/* 페이지 할당자 */
 /* A memory pool. */
 struct pool {
 	struct lock lock;               /* Mutual exclusion. */
@@ -259,9 +259,14 @@ palloc_init (void) {
    then the pages are filled with zeros.  If too few pages are
    available, returns a null pointer, unless PAL_ASSERT is set in
    FLAGS, in which case the kernel panics. */
+/* PAGE_CNT 연속 사용 가능한 페이지 그룹을 가져와서 반환
+   PAL_USER가 설정된 경우 페이지는 사용자 풀에서 가져옴.
+   그렇지 않으면 커널 풀에서. FLAGS에 PAL_ZERO가 설정되어 있으면, 그 페이지들은 0으로 채워짐.
+   사용가능 페이지 수가 너무 적으면 null 포인터를 반환, 
+   FLAGS에 PAL_ASSERT가 설정되어 있지 않으면 커널이 패닉에 빠짐 */
 void *
 palloc_get_multiple (enum palloc_flags flags, size_t page_cnt) {
-	struct pool *pool = flags & PAL_USER ? &user_pool : &kernel_pool;
+	struct pool *pool = flags & PAL_USER ? &user_pool : &kernel_pool;	
 
 	lock_acquire (&pool->lock);
 	size_t page_idx = bitmap_scan_and_flip (pool->used_map, 0, page_cnt, false);
