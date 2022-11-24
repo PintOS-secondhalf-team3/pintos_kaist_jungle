@@ -74,17 +74,40 @@ initd (void *f_name) {
 	NOT_REACHED ();
 }
 
+/* 자식 리스트를 pid로 검색하여 해당 프로세스 디스크립터를 반환 & pid가 없을 경우 NULL 반환 */
+struct thread *get_child (int pid) {
+	/* 자식 리스트에 접근하여 프로세스 디스크립터 검색 */ 
+	struct thread *cur = thread_current();
+	// 자식 리스트에서 pid에 맞는 list_elem 찾기
+	struct list_elem *child = list_begin(&cur->childs);
+	while(child != list_end(&cur->childs)){
+		struct thread *target = list_entry(child, struct thread, child_elem);
+		if(target->tid == pid){	/* 해당 pid가 존재하면 프로세스 디스크립터 반환 */ 
+			return target;
+		}else{
+			child = list_next(child);	
+		}
+	}
+	return NULL;	/* 리스트에 존재하지 않으면 NULL 리턴 */
+}
+
 /* Clones the current process as `name`. Returns the new process's thread id, or
  * TID_ERROR if the thread cannot be created. */
 tid_t
 process_fork (const char *name, struct intr_frame *if_ UNUSED) {
 	/* Clone current thread to new thread.*/
+
+	/* project 2 fork */
 	struct thread *parent = thread_current();
-	memcpy (&parent->tf, if_, sizeof(struct intr_frame)); // 부모 프로세스 메모리를 복사 parent->tf 가 parent_if일수있음
+	memcpy (&parent->parent_if, if_, sizeof(struct intr_frame)); // 부모 프로세스 메모리를 복사 parent->tf 가 parent_if일수있음
 
 	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, parent);
-	return thread_create (name,
-			PRI_DEFAULT, __do_fork, thread_current ());
+	if (pid == TID_ERROR){
+		return TID_ERROR;
+	}
+	struct thread *child = get_child(pid);
+	sema_down(&child->fork_sema);
+	return pid;
 }
 
 #ifndef VM
