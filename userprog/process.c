@@ -357,6 +357,7 @@ void process_exit(void)
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 	process_cleanup ();
+	
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up (&curr->wait_sema);	// 현재가 자식 wait_sema up
 	sema_down (&curr->free_sema); 

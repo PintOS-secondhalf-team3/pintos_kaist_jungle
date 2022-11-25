@@ -23,7 +23,6 @@ bool remove (const char *file);
 int write (int fd, const void *buffer, unsigned size); 
 int wait (tid_t pid);
 tid_t fork (const char *thread_name, struct intr_frame *f);
-// void seek (int fd, unsigned position);
 int exec (const char *file);
 int open (const char *file);
 int add_file_to_fd_table(struct file *file);
@@ -32,6 +31,8 @@ void remove_fd(int fd);
 void close (int fd);
 int filesize (int fd);
 int read (int fd, void *buffer, unsigned size);
+void seek (int fd, unsigned position);
+unsigned tell (int fd);
 
 /* System call.
  *
@@ -81,6 +82,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	/* 유저 스택에 저장되어 있는 시스템 콜 넘버를 이용해 시스템 콜 핸들러 구현 */
 	int sys_num = f->R.rax;
 	// check_address(sys_num);  /* 스택 포인터가 유저 영역인지 확인 */
+	// printf("===========syscall_handler 안========%d=======\n", sys_num);
 
 	switch (sys_num){
 		case SYS_HALT:
@@ -121,14 +123,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_READ:
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
-		// case SYS_SEEK:
-		// 	seek(f->R.rdi, f->R.rsi);
-		// 	break;
-		break;
+		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_TELL:
+			f->R.rax = tell(f->R.rdi);
+			break;
+		default:
+			thread_exit();
 	}
-
-	// thread_exit ();
-	//printf ("system call!\n");
 }
 
 
@@ -168,9 +171,6 @@ remove (const char *file) {
 	return filesys_remove(file);
 }
 
-// void
-// seek (int fd, unsigned position) {
-// }
 
 /* 자식 프로세스를 생성하고 프로그램을 실행시키는 시스템 콜 */
 int
@@ -316,7 +316,38 @@ read (int fd, void *buffer, unsigned size) {
 		return -1;
 	}else{
 	// 정상일 때 file_read
+		// lock_acquire(&filesys_lock);
 		read_size = file_read(file, buffer, size);	// 실제 읽은 사이즈 return
+		// lock_release(&filesys_lock);
 	}
 	return read_size;
+}
+
+/* 다음 읽거나 쓸 file_pos 옮겨주기 */
+void
+seek (int fd, unsigned position) {
+	struct file *file = fd_to_file(fd);
+	// check_address(file);
+	// if(file == NULL){
+	// 	return -1;
+	// }
+	// if(fd < 2){
+	// 	return -1;
+	// }
+	if(fd >2){
+		file_seek(file, position);
+	}
+}
+
+unsigned
+tell (int fd) {
+	struct file *file = fd_to_file(fd);
+	// check_address(file);
+	// if(file == NULL){
+	// 	return -1;
+	// }
+	if(fd < 2){
+		return;
+	}
+	return file_tell(file);
 }
