@@ -211,6 +211,7 @@ add_file_to_fdt(struct file *file){
 int
 open (const char *file) {
 /* 성공 시 fd를 생성하고 반환, 실패 시 -1 반환 */
+	check_address(file);
 	struct file *open_file = filesys_open (file);
 	if(open_file == NULL){
 		return -1;
