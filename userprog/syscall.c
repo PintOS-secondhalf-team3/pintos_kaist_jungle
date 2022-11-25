@@ -190,8 +190,15 @@ int
 add_file_to_fdt(struct file *file){
 	struct thread *cur = thread_current();
 	struct file **cur_fd_table = cur->fd_table;
+	//  cur->fdidx 2 이상으로 하거나
+	// cur_fd_table[0], cur_fd_table[1] 을 채워주거나
+	// int *stdin = 0; 
+	// int *stdout = 1;
+	// cur_fd_table[0] = stdin;
+	// cur_fd_table[1] = stdout;
 	for (int i = cur->fdidx; i < MAX_FD_NUM; i++){
 		if (cur_fd_table[i] == NULL){
+			// printf("+++++++++++%d+++++++++++\n",i);
 			cur_fd_table[i] = file;
 			cur->fdidx = i;
 			return cur->fdidx;
@@ -208,6 +215,7 @@ open (const char *file) {
 	if(open_file == NULL){
 		return -1;
 	}
+	
 	int fd = add_file_to_fdt(open_file);
 
 	if (fd == -1){ // fd table 가득 찼다면

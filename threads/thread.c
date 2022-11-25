@@ -212,6 +212,11 @@ thread_create (const char *name, int priority,
 	struct thread *cur = thread_current();
 	t->parent = cur; 	/* 부모 프로세스 저장 */
 	t->fd_table = palloc_get_multiple(0, FDT_PAGES);
+	int stdin = 0; 
+	int stdout = 1;
+	t->fd_table[0] = stdin;
+	t->fd_table[1] = stdout;
+	t->fdidx = 2;
 	// t->is_mem_load = false;	/* 프로그램이 로드되지 않음 */
 	// t->is_proc_off = false;	/* 프로세스가 종료되지 않음 */
 	t->child_elem;
@@ -295,7 +300,6 @@ thread_tid (void) {
 void
 thread_exit (void) {
 	ASSERT (!intr_context ());
-	
 #ifdef USERPROG
 	process_exit ();
 #endif
