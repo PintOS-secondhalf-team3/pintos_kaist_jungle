@@ -28,6 +28,8 @@ static void initd(void *f_name);
 static void __do_fork(void *);
 struct thread *get_child(int pid);
 
+struct lock file_lock;
+
 /* General process initializer for initd and other process. */
 static void
 process_init(void)
@@ -120,7 +122,7 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED){
 		return TID_ERROR;
 	}
 	struct thread *child = get_child(pid);
-	sema_down(&child->fork_sema); // fork_sema가 1이 될 때까지(=자식 스레드 load 완료될 때까지) 기다렸다가
+	sema_down(&child->fork_sema); // fork_sema가 1이 될 때까지(=자식 스레드 load 완료될 때까지) 기다렸다가 // 부모 얼음
 	if (child->exit_status == -1)
 		return TID_ERROR;
 	return pid;	// 끝나면 pid 반환
@@ -239,7 +241,7 @@ __do_fork(void *aux){
 		current->fd_table[i] = file_duplicate(f);
 	}
 
-	current->fdidx = parent->fdidx;	
+	current->fdidx = parent->fdidx;
 	sema_up(&current->fork_sema);
 	process_init();
 
@@ -351,16 +353,23 @@ int process_wait(tid_t child_tid UNUSED){
 /* Exit the process. This function is called by thread_exit (). */
 void process_exit(void)
 {
-	struct thread *curr = thread_current();
+	struct thread *cur = thread_current();
 	/* TODO: Your code goes here.
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	process_cleanup ();
+	for (int i =0; i < MAX_FD_NUM; i++){
+		close(i);
+	}
+	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 	
+	/* 실행 중인 파일 close */
+	file_close(cur->run_file);
+
+	process_cleanup ();
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
-	sema_up (&curr->wait_sema);	// 현재가 자식 wait_sema up
-	sema_down (&curr->free_sema); 
+	sema_up (&cur->wait_sema);	// 현재가 자식 wait_sema up
+	sema_down (&cur->free_sema); 
 }
 
 /* Free the current process's resources. */
@@ -528,6 +537,7 @@ load(const char *file_name, struct intr_frame *if_)
 	char *argv[128]; // 커맨드 라인 길이 제한 128
 	char *token, *save_ptr;
 	int argc = 0;
+	lock_init(&file_lock);
 
 	token = strtok_r(file_name, " ", &save_ptr);
 	argv[argc] = token;
@@ -545,13 +555,24 @@ load(const char *file_name, struct intr_frame *if_)
 		goto done;
 	process_activate(t);
 
+	/* 락 획득 */
+	// lock_acquire(&file_lock);
 	/* Open executable file. */
 	file = filesys_open(file_name);
 	if (file == NULL)
 	{
+		/* 락 해제 */
+		lock_release(&file_lock);
 		printf("load: %s: open failed\n", file_name);
 		goto done;
 	}
+
+	/* thread 구조체의 run_file을 현재 실행할 파일로 초기화 */ 
+	t->run_file = file;
+	/* file_deny_write()를 이용하여 파일에 대한 write를 거부 */ 
+	file_deny_write(file);
+	/* 락 해제 */
+	// lock_release(&file_lock);
 
 	/* Read and verify executable header. */
 	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
@@ -634,7 +655,7 @@ load(const char *file_name, struct intr_frame *if_)
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close(file);
+	// file_close(file);
 	return success;
 }
 

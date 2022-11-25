@@ -124,12 +124,14 @@ struct thread
 	struct file **fd_table;		 /* FDT '파일을 가르키는 포인터'를 가르키는 포인터*/
 	int fdidx;					 /* 쓰레드가 관리하는 여러 파일 중 FDT 파일에 대한 idx */
 
+	struct file *run_file;
+	
 	struct thread *parent;		 /* 부모 프로세스의 디스크립터 */
 	struct list_elem child_elem; /* 자식 리스트 element */
 	struct list childs;			 /* 자식 리스트 */
 	// bool is_mem_load;					/* 프로세스의 프로그램 메모리 적재 유무 */
 	// bool is_proc_off; 					/* 프로세스가 종료 유무 확인 */
-	struct semaphore fork_sema; /* fork 세마포어 */
+	struct semaphore fork_sema; /* fork 세s마포어 */
 	struct semaphore wait_sema; /* exit 세마포어 */
 	struct semaphore free_sema; /* free 세마포어 */
 	int exit_status;			/* exit 호출 시 종료 status */

@@ -134,6 +134,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			f->R.rax = tell(f->R.rdi);
 			break;
 		default:
+			// exit(-1);
+			// break;
 			thread_exit();
 	}
 }
@@ -217,6 +219,7 @@ open (const char *file) {
 /* 성공 시 fd를 생성하고 반환, 실패 시 -1 반환 */
 	check_address(file);
 	struct file *open_file = filesys_open (file);
+	
 	if(open_file == NULL){
 		return -1;
 	}
@@ -274,6 +277,9 @@ void
 remove_fd(int fd){
 	struct thread *cur = thread_current();
 	struct file **cur_fd_table = cur->fd_table;
+	if(fd< 0 || fd > MAX_FD_NUM){
+		return;
+	}
 	cur_fd_table[fd] = NULL;
 }
 
@@ -284,7 +290,7 @@ close (int fd) {
 	if(file == NULL){
 		return;
 	}
-	file_close(file);
+	// file_close(file);
 	// fdt 에서 지워주기
 	remove_fd(fd);
 }
@@ -315,6 +321,7 @@ read (int fd, void *buffer, unsigned size) {
 		char keyboard;
 		for(read_size =0; read_size < size; read_size ++){
 			keyboard = input_getc();
+			// *buf ++ = keyboard;
 			buf = keyboard;
 			*buf ++;
 			if(keyboard == '\0'){ // null 전까지 저장
@@ -340,10 +347,10 @@ seek (int fd, unsigned position) {
 	// if(file == NULL){
 	// 	return -1;
 	// }
-	// if(fd < 2){
-	// 	return -1;
-	// }
-	if(fd >2){
+	if(fd < 2){
+		return;
+	}
+	if(fd >= 2){
 		file_seek(file, position);
 	}
 }

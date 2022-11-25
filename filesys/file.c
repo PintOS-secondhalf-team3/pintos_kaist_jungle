@@ -123,7 +123,8 @@ off_t file_write_at(struct file *file, const void *buffer, off_t size,
 
 /* Prevents write operations on FILE's underlying inode
  * until file_allow_write() is called or FILE is closed. */
-/* file_allow_write()를 호출하거나 FILE을 닫을 때까지 FILE의 기본 inode에서 쓰기 작업을 방지 */
+/* file_allow_write()를 호출하거나 FILE을 닫을 때까지 
+	FILE의 기본 inode에서 쓰기 작업을 방지 */
 void file_deny_write(struct file *file){
 	ASSERT(file != NULL);
 	if (!file->deny_write){
@@ -135,7 +136,9 @@ void file_deny_write(struct file *file){
 /* Re-enables write operations on FILE's underlying inode.
  * (Writes might still be denied by some other file that has the
  * same inode open.) */
+/* 파일의 데이터가 변경되는 것을 허락 */
 void file_allow_write(struct file *file){
+	// printf("=================file_allow_write====================\n");
 	ASSERT(file != NULL);
 	if (file->deny_write)
 	{
