@@ -32,6 +32,9 @@ intq_full (const struct intq *q) {
    Q must not be empty if called from an interrupt handler.
    Otherwise, if Q is empty, first sleeps until a byte is
    added. */
+/* Q에서 바이트를 제거하고 반환 
+   인터럽트 핸들러에서 호출된 경우 Q가 비어 있으면 안됨.
+   Q가 비어 있으면 바이트가 추가될 때까지 먼저 절전 모드로 전환 */
 uint8_t
 intq_getc (struct intq *q) {
 	uint8_t byte;

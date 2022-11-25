@@ -25,13 +25,13 @@ int wait (tid_t pid);
 tid_t fork (const char *thread_name, struct intr_frame *f);
 // void seek (int fd, unsigned position);
 int exec (const char *file);
-// int read (int fd, void *buffer, unsigned size);
 int open (const char *file);
 int add_file_to_fd_table(struct file *file);
 struct file *fd_to_file(int fd);
 void remove_fd(int fd); 
 void close (int fd);
 int filesize (int fd);
+int read (int fd, void *buffer, unsigned size);
 
 /* System call.
  *
@@ -118,9 +118,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_FILESIZE:
 			f->R.rax = filesize(f->R.rdi);
 			break;
-		// case SYS_READ:
-		// 	read(f->R.rdi, f->R.rsi, f->R.rdx);
-		// 	break;
+		case SYS_READ:
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
 		// case SYS_SEEK:
 		// 	seek(f->R.rdi, f->R.rsi);
 		// 	break;
@@ -223,12 +223,6 @@ open (const char *file) {
 	return fd;
 }
 
-
-// int
-// read (int fd, void *buffer, unsigned size) {
-// 	return syscall3 (SYS_READ, fd, buffer, size);
-// }
-
 int
 write (int fd, const void *buffer, unsigned size) {
 	if (fd == 1) {
@@ -283,7 +277,32 @@ filesize (int fd) {
 	return file_length(file);
 }
 
-// int
-// read (int fd, void *buffer, unsigned size) {
-// 	return syscall3 (SYS_READ, fd, buffer, size);
-// }
+int
+read (int fd, void *buffer, unsigned size) {
+	struct file *file = fd_to_file(fd);
+	// 버퍼의 처음 시작~ 끝 주소 check
+	check_address(buffer);
+	check_address(buffer+size-1); // -1은 null 전까지만 유효하면 되서 
+	char *buf = buffer;
+	int read_size;
+
+	if(file == NULL){
+		return -1;
+	}
+	// 정상인데 0 일 때, 키보드면 input_get
+	if(fd == 0){
+		char keyboard;
+		for(read_size =0; read_size < size; read_size ++){
+			keyboard = input_getc();
+			buf = keyboard;
+			*buf ++;
+			if(keyboard == '\0'){ // null 전까지 저장
+				break;
+			}
+		} 
+	}else{
+	// 정상일 때 file_read
+		read_size = file_read(file, buffer, size);	// 실제 읽은 사이즈 return
+	}
+	return read_size;
+}
