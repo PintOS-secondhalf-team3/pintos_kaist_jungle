@@ -34,6 +34,9 @@ int read (int fd, void *buffer, unsigned size);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 
+struct lock filesys_lock;
+
+
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -58,6 +61,7 @@ syscall_init (void) {
 	 * mode stack. Therefore, we masked the FLAG_FL. */
 	write_msr(MSR_SYSCALL_MASK,
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
+	lock_init(&filesys_lock);
 }
 
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인 하는 함수
@@ -233,13 +237,18 @@ write (int fd, const void *buffer, unsigned size) {
 		return -1;
 	}
 
-	if (fd == 1) {
+	lock_acquire(&filesys_lock);
+	if (fd == 1) {	// stdout(표준 출력) - 모니터
 		putbuf(buffer, size);
+		lock_release(&filesys_lock);
 		return size;
 	}else if(fd == 0){
+		lock_release(&filesys_lock);
 		return -1;
 	}else{ 
-		return file_write(file, buffer, size);
+		int bytes_written = file_write(file, buffer, size);
+		lock_release(&filesys_lock);
+		return bytes_written;
 	}
 }
 
@@ -316,9 +325,9 @@ read (int fd, void *buffer, unsigned size) {
 		return -1;
 	}else{
 	// 정상일 때 file_read
-		// lock_acquire(&filesys_lock);
+		lock_acquire(&filesys_lock);
 		read_size = file_read(file, buffer, size);	// 실제 읽은 사이즈 return
-		// lock_release(&filesys_lock);
+		lock_release(&filesys_lock);
 	}
 	return read_size;
 }
