@@ -300,6 +300,8 @@ read (int fd, void *buffer, unsigned size) {
 				break;
 			}
 		} 
+	}else if(fd == 1){
+		return -1;
 	}else{
 	// 정상일 때 file_read
 		read_size = file_read(file, buffer, size);	// 실제 읽은 사이즈 return
