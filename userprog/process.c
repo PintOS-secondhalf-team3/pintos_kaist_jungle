@@ -562,7 +562,7 @@ load(const char *file_name, struct intr_frame *if_)
 	if (file == NULL)
 	{
 		/* 락 해제 */
-		lock_release(&file_lock);
+		// lock_release(&file_lock);
 		printf("load: %s: open failed\n", file_name);
 		goto done;
 	}
