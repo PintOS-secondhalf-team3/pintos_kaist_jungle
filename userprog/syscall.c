@@ -31,6 +31,7 @@ int add_file_to_fd_table(struct file *file);
 struct file *fd_to_file(int fd);
 void remove_fd(int fd); 
 void close (int fd);
+int filesize (int fd);
 
 /* System call.
  *
@@ -103,23 +104,26 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_FORK:
 			f->R.rax = fork(f->R.rdi, f);
 			break;
-		// case SYS_SEEK:
-		// 	seek(f->R.rdi, f->R.rsi);
-		// 	break;
 		case SYS_EXEC:
 			if(exec(f->R.rdi) == -1){
 				exit(-1);
 			}
 			break;
-		// case SYS_READ:
-		// 	read(f->R.rdi, f->R.rsi, f->R.rdx);
-		// 	break;
 		case SYS_OPEN:
 			f->R.rax = open(f->R.rdi);
 			break;
 		case SYS_CLOSE:
 			close(f->R.rdi);
 			break;
+		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
+			break;
+		// case SYS_READ:
+		// 	read(f->R.rdi, f->R.rsi, f->R.rdx);
+		// 	break;
+		// case SYS_SEEK:
+		// 	seek(f->R.rdi, f->R.rsi);
+		// 	break;
 		break;
 	}
 
@@ -269,3 +273,17 @@ close (int fd) {
 	// fdt 에서 지워주기
 	remove_fd(fd);
 }
+
+int
+filesize (int fd) {
+	struct file *file = fd_to_file(fd);
+	if(file == NULL){
+		return -1;
+	}
+	return file_length(file);
+}
+
+// int
+// read (int fd, void *buffer, unsigned size) {
+// 	return syscall3 (SYS_READ, fd, buffer, size);
+// }
