@@ -228,6 +228,8 @@ __do_fork(void *aux){
 		goto error;
 	}
 
+	current->fd_table[0] = parent->fd_table[0];
+	current->fd_table[1] = parent->fd_table[1];
 	for (int i = 2; i < MAX_FD_NUM; i++){
 		struct file *f = parent->fd_table[i];
 		if (f == NULL){
@@ -325,6 +327,7 @@ int process_wait(tid_t child_tid UNUSED){
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+
 	/* 자식 프로세스의 프로세스 디스크립터 검색 */
 	struct thread * child = get_child(child_tid); /* 자식 리스트를 검색하여 프로세스 디스크립터의 주소 리턴 */
 	if(child == NULL){	/* 예외 처리 발생시 -1 리턴 */
@@ -339,6 +342,7 @@ int process_wait(tid_t child_tid UNUSED){
 	remove_child_process(child); 	/* 프로세스 디스크립터를 자식 리스트에서 제거 후 메모리 해제 */
 	/* 자식 프로세스의 exit status 리턴 */
 	sema_up(&child->free_sema);
+
 	return exit_status;
 	// thread_set_priority(thread_get_priority() - 1);
 	// return -1;

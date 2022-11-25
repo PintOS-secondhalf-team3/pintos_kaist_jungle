@@ -28,7 +28,9 @@ int exec (const char *file);
 // int read (int fd, void *buffer, unsigned size);
 int open (const char *file);
 int add_file_to_fd_table(struct file *file);
-// void close (int fd);
+struct file *fd_to_file(int fd);
+void remove_fd(int fd); 
+void close (int fd);
 
 /* System call.
  *
@@ -115,8 +117,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_OPEN:
 			f->R.rax = open(f->R.rdi);
 			break;
-		// case SYS_CLOSE:
-		// 	close(f->R.rdi);
+		case SYS_CLOSE:
+			close(f->R.rdi);
+			break;
 		break;
 	}
 
@@ -208,8 +211,8 @@ open (const char *file) {
 	if(open_file == NULL){
 		return -1;
 	}
+	
 	int fd = add_file_to_fdt(open_file);
-
 	if (fd == -1){ // fd table 가득 찼다면
 		file_close(open_file);
 	}
@@ -236,7 +239,33 @@ fork (const char *thread_name, struct intr_frame *f){
 	return process_fork(thread_name, f);
 }
 
-// void
-// close (int fd) {
-// 	syscall1 (SYS_CLOSE, fd);
-// }
+/* 현재 프로세스의 fd에 있는 file 반환 */
+struct file *
+fd_to_file(int fd){
+	struct thread *cur = thread_current();
+	struct file **cur_fd_table = cur->fd_table;
+	if(0 <= fd && fd < MAX_FD_NUM){
+		return cur_fd_table[fd];
+	}else{
+		return NULL;
+	}
+}
+
+void
+remove_fd(int fd){
+	struct thread *cur = thread_current();
+	struct file **cur_fd_table = cur->fd_table;
+	cur_fd_table[fd] = NULL;
+}
+
+void
+close (int fd) {
+	// fd를 file로 변경해서 file_close()인자로 넣기
+	struct file *file = fd_to_file(fd);
+	if(file == NULL){
+		return;
+	}
+	file_close(file);
+	// fdt 에서 지워주기
+	remove_fd(fd);
+}
