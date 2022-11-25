@@ -99,6 +99,10 @@ off_t file_read_at(struct file *file, void *buffer, off_t size, off_t file_ofs){
  * (Normally we'd grow the file in that case, but file growth is
  * not yet implemented.)
  * Advances FILE's position by the number of bytes read. */
+/* 파일의 현재 위치부터 버퍼에서 파일로 size byte만큼 씀 
+   실제로 쓴 바이트 수를 반환. 파일 끝에 도달한 경우 SIZE보다 작을 수 있음
+   (일반적으로 이러한 경우에는 파일을 확장하지만, 파일 확장은 아직 구현 안됨)  
+   읽은 바이트 수만큼 파일의 위치를 전진 */
 off_t file_write(struct file *file, const void *buffer, off_t size){
 	off_t bytes_written = inode_write_at(file->inode, buffer, size, file->pos);
 	file->pos += bytes_written;

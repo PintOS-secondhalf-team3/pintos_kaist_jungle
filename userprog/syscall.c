@@ -225,9 +225,20 @@ open (const char *file) {
 
 int
 write (int fd, const void *buffer, unsigned size) {
+	struct file *file = fd_to_file(fd);
+	check_address(buffer);
+	check_address(buffer+size-1); // -1은 null 전까지만 유효하면 되서 
+	if(file == NULL){
+		return -1;
+	}
+
 	if (fd == 1) {
 		putbuf(buffer, size);
 		return size;
+	}else if(fd == 0){
+		return -1;
+	}else{ 
+		return file_write(file, buffer, size);
 	}
 }
 
