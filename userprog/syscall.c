@@ -235,7 +235,6 @@ int
 write (int fd, const void *buffer, unsigned size) {
 	struct file *file = fd_to_file(fd);
 	check_address(buffer);
-	check_address(buffer+size-1); // -1은 null 전까지만 유효하면 되서 
 	if(file == NULL){
 		return -1;
 	}

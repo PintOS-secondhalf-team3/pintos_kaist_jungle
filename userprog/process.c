@@ -117,14 +117,12 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED){
 	struct thread *parent = thread_current();
 	memcpy(&parent->parent_if, if_, sizeof(struct intr_frame)); //  parent_if에는 유저 스택 정보 담기
 	/* 자식 프로세스 생성 */
-	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, parent); // process_fork의 인자로 받은 name으로 __do_fork() 진행
+	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, parent); // 마지막에 thread_current를 줘서, 같은 rsi를 공유하게 함
 	if (pid == TID_ERROR){
 		return TID_ERROR;
 	}
 	struct thread *child = get_child(pid);
 	sema_down(&child->fork_sema); // fork_sema가 1이 될 때까지(=자식 스레드 load 완료될 때까지) 기다렸다가 // 부모 얼음
-	if (child->exit_status == -1)
-		return TID_ERROR;
 	return pid;	// 끝나면 pid 반환
 }
 
@@ -200,7 +198,6 @@ __do_fork(void *aux){
 
 	/* 1. Read the cpu context to local stack. */
 	memcpy(&if_, parent_if, sizeof(struct intr_frame));
-	if_.R.rax = 0; // fork return value for child
 
 	/* 2. Duplicate PT */
 	current->pml4 = pml4_create();
@@ -243,6 +240,7 @@ __do_fork(void *aux){
 
 	current->fdidx = parent->fdidx;
 	sema_up(&current->fork_sema);
+	if_.R.rax = 0; // 반환값 (자식프로세스가 0을 반환해야 함.)
 	process_init();
 
 	/* Finally, switch to the newly created process. */
@@ -260,12 +258,12 @@ error:
 int process_exec(void *f_name)
 {
 	char *file_name = f_name;
+	struct intr_frame _if;
 	bool success;
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
-	struct intr_frame _if;
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
@@ -361,15 +359,16 @@ void process_exit(void)
 	for (int i =0; i < MAX_FD_NUM; i++){
 		close(i);
 	}
-	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 	
 	/* 실행 중인 파일 close */
 	file_close(cur->run_file);
+	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
-	process_cleanup ();
+	// process_cleanup (); 밑으로 위치 이동
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up (&cur->wait_sema);	// 현재가 자식 wait_sema up
 	sema_down (&cur->free_sema); 
+	process_cleanup (); // 밑으로 위치 이동
 }
 
 /* Free the current process's resources. */
