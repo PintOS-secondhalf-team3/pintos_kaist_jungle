@@ -114,15 +114,19 @@ struct thread *get_child(int pid){
 tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED){
 	/* Clone current thread to new thread.*/
 	/* project 2 fork */
-	struct thread *parent = thread_current();
-	memcpy(&parent->parent_if, if_, sizeof(struct intr_frame)); //  parent_if에는 유저 스택 정보 담기
+	struct thread *cur = thread_current();
+	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame)); //  parent_if에는 유저 스택 정보 담기
 	/* 자식 프로세스 생성 */
-	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, parent); // 마지막에 thread_current를 줘서, 같은 rsi를 공유하게 함
+	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, cur); // 마지막에 thread_current를 줘서, 같은 rsi를 공유하게 함
 	if (pid == TID_ERROR){
 		return TID_ERROR;
 	}
 	struct thread *child = get_child(pid);
+	
 	sema_down(&child->fork_sema); // fork_sema가 1이 될 때까지(=자식 스레드 load 완료될 때까지) 기다렸다가 // 부모 얼음
+	if(child->exit_status == -1){
+		return TID_ERROR;
+	}
 	return pid;	// 끝나면 pid 반환
 }
 
@@ -368,7 +372,7 @@ void process_exit(void)
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up (&cur->wait_sema);	// 현재가 자식 wait_sema up
 	sema_down (&cur->free_sema); 
-	process_cleanup (); // 밑으로 위치 이동
+	process_cleanup ();
 }
 
 /* Free the current process's resources. */
