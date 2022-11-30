@@ -71,6 +71,7 @@ main (void) {
 	char **argv;
 
 	/* Clear BSS and get machine's RAM size. */
+	/* BSS를 지우고 머신의 RAM size를 가져옴 */
 	bss_init ();
 
 	/* Break command line into arguments and parse options. */
@@ -79,10 +80,10 @@ main (void) {
 
 	/* Initialize ourselves as a thread so we can use locks,
 	   then enable console locking. */
-	thread_init ();
-	console_init ();
+	thread_init (); // lock을 사용할 수 있도록 스레드를 초기화
+	console_init (); // 콘솔 잠금을 가능하게 함
 
-	/* Initialize memory system. */
+	/* Initialize memory system. (메모리 시스템 초기화) */ 
 	mem_end = palloc_init ();
 	malloc_init ();
 	paging_init (mem_end);
@@ -93,6 +94,7 @@ main (void) {
 #endif
 
 	/* Initialize interrupt handlers. */
+	// 인터럽트 핸들러 : 인터럽트 발생시 이를 핸들링하기 위해 호출되는 함수
 	intr_init ();
 	timer_init ();
 	kbd_init ();
@@ -102,12 +104,14 @@ main (void) {
 	syscall_init ();
 #endif
 	/* Start thread scheduler and enable interrupts. */
-	thread_start ();
+	thread_start (); // 인터럽트 활성화하여 쓰레드 선점 스케쥴링(preemptive thread secheduling)을 시작하고 유휴(idle) 쓰레드를 만든다.
+	// 선점 스케쥴링 : 인터럽트나 시스템 호출 종료 시에 더 높은 우선 순위 프로세스가 발생되었음을 알았을 때, 현 실행 프로세스로부터 강제로 CPU를 회수하는 것
 	serial_init_queue ();
 	timer_calibrate ();
 
 #ifdef FILESYS
 	/* Initialize file system. */
+	// 파일 시스템 초기화
 	disk_init ();
 	filesys_init (format_filesys);
 #endif
@@ -119,11 +123,11 @@ main (void) {
 	printf ("Boot complete.\n");
 
 	/* Run actions specified on kernel command line. */
-	run_actions (argv);
+	run_actions (argv); // run_actions 함수를 통해 응용 프로그램을 실행한다던가 thread를 테스트한다던가 하는 각 task 별로 평가가 진행된다.
 
 	/* Finish up. */
 	if (power_off_when_done)
-		power_off ();
+		power_off (); // 시스템의 전원을 끈다.
 	thread_exit ();
 }
 
@@ -147,11 +151,15 @@ static void
 paging_init (uint64_t mem_end) {
 	uint64_t *pml4, *pte;
 	int perm;
+	
+	// 페이지 테이블을 커널 가상 매핑으로 채운 후 새 페이지 디렉토리를 사용하도록  cpu를 설정한다.
+	// base_pml4 는 생성된 pml4를 뜻함. (pml4 = 페이지 맵 레벨 4)
 	pml4 = base_pml4 = palloc_get_page (PAL_ASSERT | PAL_ZERO);
 
 	extern char start, _end_kernel_text;
 	// Maps physical address [0 ~ mem_end] to
 	//   [LOADER_KERN_BASE ~ LOADER_KERN_BASE + mem_end].
+	// 실제 주소 [0 ~ mem_end]를 [LOADER_KERN_BASE ~ LOADER_KERN_BASE + mem_end]에 매핑
 	for (uint64_t pa = 0; pa < mem_end; pa += PGSIZE) {
 		uint64_t va = (uint64_t) ptov(pa);
 

@@ -32,7 +32,9 @@ void debug_backtrace (void);
 		PANIC ("assertion `%s' failed.", #CONDITION);   \
 	}
 #define NOT_REACHED() PANIC ("executed an unreachable statement");
-#else
+#elseㄴ
 #define ASSERT(CONDITION) ((void) 0)
 #define NOT_REACHED() for (;;)
 #endif /* lib/debug.h */
+
+// assert 함수 -> 에러 검출용 코드 . 해당 컨디션이 아니면 os를 중지하고 원본 파일 이름, 줄 번호 및 기능 이름과 사용자별 메시지를 출력함.

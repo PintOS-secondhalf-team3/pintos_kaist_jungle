@@ -129,6 +129,8 @@ thread_start (void) {
 	/* Create the idle thread. */
 	struct semaphore idle_started;
 	sema_init (&idle_started, 0);
+
+	// 가장 낮은 우선순위로 idle 쓰레드를 생성
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
 
 	/* Start preemptive thread scheduling. */
@@ -470,9 +472,12 @@ void refresh_priority(void){
 	/* 가장 우선순위가 높은 donations 리스트의 스레드와
 	현재 스레드의 우선순위를 비교하여 높은 값을 현재 스레드의 우선순위로 설정 */
 	if(list_empty(&cur->donations)== false){
+
 		list_sort(&cur->donations, cmp_don_priority, NULL);
 		struct thread *t = list_entry(list_front(&cur->donations), struct thread, donation_elem);
-		if(t->priority > cur->priority){	/* 가장 우선순위가 높은 donations 리스트의 스레드가 현재 스레드의 우선순위보다 높으면*/
+
+		/* 가장 우선순위가 높은 donations 리스트의 스레드가 현재 스레드의 우선순위보다 높으면*/
+		if(t->priority > cur->priority){
 			cur->priority = t->priority;
 		}
 	} 
@@ -515,6 +520,14 @@ thread_get_recent_cpu (void) {
    blocks.  After that, the idle thread never appears in the
    ready list.  It is returned by next_thread_to_run() as a
    special case when the ready list is empty. */
+
+	/* 유휴 스레드 -> 실행할 준비가 된 다른 스레드가 없을 때 실행.
+	유휴 스레드는 처음에 thread_start()에 의해 준비 목록에 표시.
+	처음에 한 번 예약되며, 이 시점에서 idle_thread를 초기화하고
+	thread_start()가 계속될 수 있도록 전달된 세마포어를 "업" 한 후 즉시 차단
+	그 후 유휴 스레드는 준비 목록에 나타나지 않음.
+	준비 목록이 비어 있는 경우 next_thread_to_run()에서 특별한 경우로 반환 */
+
 static void
 idle (void *idle_started_ UNUSED) {
 	struct semaphore *idle_started = idle_started_;
@@ -548,11 +561,10 @@ static void
 kernel_thread (thread_func *function, void *aux) {
 	ASSERT (function != NULL);
 
-	intr_enable ();       /* The scheduler runs with interrupts off. */
-	function (aux);       /* Execute the thread function. */
-	thread_exit ();       /* If function() returns, kill the thread. */
+	intr_enable ();       /* 스케줄러가 인터럽트를 끈 상태에서 실행. */
+	function (aux);       /* 스레드 함수 실행. */
+	thread_exit ();       /* 함수가 반환되면 thread kill */
 }
-
 
 /* Does basic initialization of T as a blocked thread named
    NAME. */
