@@ -133,6 +133,7 @@ bool delete_page(struct hash *pages, struct page *p)
 static struct frame *
 vm_get_victim(void)
 {
+
 	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
 
@@ -146,6 +147,7 @@ vm_evict_frame(void)
 {
 	struct frame *victim UNUSED = vm_get_victim();
 	/* TODO: swap out the victim and return the evicted frame. */
+	// 비우고자 하는 해당 프레임을 victim이라 하고, 이 victim과 연결된 가상 페이지를 swap_out()에 인자로 넣어준다.
 	swap_out(victim->page);
 
 	return NULL;
@@ -162,12 +164,13 @@ static struct frame *
 vm_get_frame(void) // heesan 구현
 {
 	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
+
+	ASSERT(frame != NULL);
+	ASSERT(frame->page == NULL);
 	/* TODO: Fill this function. */
 
 	// user pool에서 커널 가상 주소 공간으로 1page 할당
-	// struct page *page = palloc_get_page(PAL_USER);
-
-	frame->kva = palloc_get_page(PAL_USER); // user pool에서 커널 가상 주소 공간으로 1page 할당
+	frame->kva = palloc_get_page(PAL_USER);
 
 	if (frame->kva == NULL)
 	{							  // 유저 풀 공간이 하나도 없다면
@@ -179,8 +182,6 @@ vm_get_frame(void) // heesan 구현
 
 	frame->page = NULL;
 
-	ASSERT(frame != NULL);
-	ASSERT(frame->page == NULL);
 	return frame;
 }
 
