@@ -6,6 +6,9 @@
 #include "lib/kernel/hash.h"
 #include "include/threads/thread.h"
 
+struct list frame_table;
+
+
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void vm_init(void)
@@ -40,6 +43,7 @@ page_get_type(struct page *page)
 static struct frame *vm_get_victim(void);
 static bool vm_do_claim_page(struct page *page);
 static struct frame *vm_evict_frame(void);
+
 
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
@@ -83,7 +87,7 @@ page_lookup(const void *address)
 {
 	struct page p;
 	struct hash_elem *e;
-	
+
 	// va가 가리키는 가상 페이지의 시작포인트(오프셋이 0으로 설정된 va) 반환
 	p.va = pg_round_down(address);
 
@@ -101,17 +105,17 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 	int succ = false;
 	/* TODO: Fill this function. */
 
-	return insert_page(&spt->spt_hash,page);
+	return insert_page(&spt->spt_hash, page);
 }
 
 // heesan
-bool insert_page(struct hash *pages, struct page *p) {
-    if (!hash_insert(pages, &p->hash_elem))
-        return true;
-    else
-        return false;
+bool insert_page(struct hash *pages, struct page *p)
+{
+	if (!hash_insert(pages, &p->hash_elem))
+		return true;
+	else
+		return false;
 }
-
 
 void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 {
@@ -119,8 +123,9 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 	return true;
 }
 
-bool delete_page(struct hash *pages, struct page *p){
-	if(!hash_delete(pages, &p->hash_elem))
+bool delete_page(struct hash *pages, struct page *p)
+{
+	if (!hash_delete(pages, &p->hash_elem))
 		return true;
 	else
 		return false;
@@ -153,17 +158,29 @@ vm_evict_frame(void)
  * space.*/
 
 // user pool에서 새 물리적 페이지를 가져오는 함수
-// 성공적으로 가져오면 프레임을 할당하고 멤버를 초기화 한 후 반환
+// palloc을 이용해 프레임을 할당받아옴. 만약 가용 가능한 페이지가 없다면 페이지를 스왑하고 frame 공간을 디스크로 내린다.
 static struct frame *
 vm_get_frame(void) // heesan 구현
 {
-	struct frame *frame = NULL;
+	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
 	/* TODO: Fill this function. */
 
 	ASSERT(frame != NULL);
 	ASSERT(frame->page == NULL);
+	// user pool에서 커널 가상 주소 공간으로 1page 할당
+	struct page *page = palloc_get_page(PAL_USER);
+	frame->kva = palloc_get_page(PAL_USER); // user pool에서 커널 가상 주소 공간으로 1page 할당
+	if (frame->kva == NULL)
+	{							  // 유저 풀 공간이 하나도 없다면
+		frame = vm_evict_frame(); // 새로운 프레임을 할당 받는다.
+		frame->page = NULL;
+		return frame;
+	}
+	list_push_back(&frame_table,&frame->frame_elem);
+	frame->page = NULL;
 	return frame;
 }
+
 
 /* Growing the stack. */
 static void

@@ -24,8 +24,11 @@ static void rehash (struct hash *);
 bool
 hash_init (struct hash *h,
 		hash_hash_func *hash, hash_less_func *less, void *aux) {
+			// 인자로 받는 함수들로 해시 테이블의 해시들을 초기화 함
 	h->elem_cnt = 0;
 	h->bucket_cnt = 4;
+
+	// 성공하면 메모리로 할당받고, 실패하면 메모리에 할당안됨
 	h->buckets = malloc (sizeof *h->buckets * h->bucket_cnt);
 	h->hash = hash;
 	h->less = less;
