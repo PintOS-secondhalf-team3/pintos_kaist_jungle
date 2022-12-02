@@ -72,7 +72,7 @@ struct page *
 spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 // va를 기준으로 hash_table에서 elem을 찾는다
 {
-	struct page *page = page_lookup(va);
+	struct page *page = page_lookup(va); // heesan
 	/* TODO: Fill this function. */
 
 	return page;
@@ -80,13 +80,15 @@ spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 
 /* Returns the page containing the given virtual address, or a null pointer if no such page exists. */
 struct page *
-page_lookup (const void *address) {
+page_lookup (const void *address) { // heesan
   struct page p;
   struct hash_elem *e;
 
   p.va = pg_round_down(address);
 
   // hash_find : 가상 주소를 기반으로 페이지를 찾고 반환하는 함수입니다.
+  // 주어진 element와 같은 element가 hash안에 있는지 탐색한다.
+  // 성공하면 해당 element를, 실패하면 null 포인터로 반환한다.
   e = hash_find (&thread_current()->spt.hash, &p.hash_elem); // 해시 테이블에서 요소 검색한다.
   return e != NULL ? hash_entry (e, struct page, hash_elem) : NULL;
 }
@@ -97,6 +99,8 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 {
 	int succ = false;
 	/* TODO: Fill this function. */
+	if (!hash_insert(&spt->spt_hash, &page->hash_elem));
+		succ = true; // heesan
 
 	return succ;
 }

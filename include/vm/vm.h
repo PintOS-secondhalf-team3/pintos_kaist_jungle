@@ -67,9 +67,10 @@ struct page {
 };
 
 /* The representation of "frame" */
+// 물리적 메모리를 나타냄
 struct frame {
-	void *kva;
-	struct page *page;
+	void *kva; // 커널 가상 주소
+	struct page *page; // 페이지 구조
 };
 
 /* The function table for page operations.
