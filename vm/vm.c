@@ -234,14 +234,16 @@ static bool
 vm_do_claim_page(struct page *page)
 { // 가상 주소와 물리 주소 매핑( 성공, 실패 여부 리턴)
 	struct frame *frame = vm_get_frame();
-
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-
-	return swap_in(page, frame->kva);
+	// heesan
+	if(install_page(page->va, frame->kva, page->writable)){
+		return swap_in(page,frame->kva);
+	}
+	return false;
 }
 
 /* Initialize new supplemental page table */

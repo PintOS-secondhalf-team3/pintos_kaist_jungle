@@ -49,10 +49,12 @@ struct page {
 	void *va;              /* Address in terms of user space */
 	struct frame *frame;   /* Back reference for frame */
 
-	/* Your implementation */
 	
-	struct hash_elem hash_elem; // spt테이블에서 페이지를 찾기 위해서 hash_elem 필요함
-	// 이 hash_elem을 타고 struct page 로 가서 메타데이터를 알 수가 있다.
+	/* Your implementation */
+	struct hash_elem hash_elem; /*spt테이블에서 페이지를 찾기 위해서 hash_elem 필요함이 hash_elem을 타고 struct page 로 가서 메타데이터를 알 수가 있다.*/
+	bool writable; // wrtie 가능한지 여부
+
+
 	
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
