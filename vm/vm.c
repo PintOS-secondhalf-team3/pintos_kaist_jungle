@@ -5,6 +5,7 @@
 #include "vm/inspect.h"
 #include "lib/kernel/hash.h"
 #include "include/threads/thread.h"
+#include "userprog/process.h"
 
 struct list frame_table;
 
@@ -92,7 +93,7 @@ page_lookup(const void *address)
 	// hash_find : 가상 주소를 기반으로 페이지를 찾고 반환하는 함수
 	// 주어진 element와 같은 element가 hash안에 있는지 탐색
 	// 성공하면 해당 element를, 실패하면 null 포인터로 반환
-	e = hash_find(&thread_current()->spt.hash, &p.hash_elem); // 해시 테이블에서 요소 검색한다.
+	e = hash_find(&thread_current()->spt->spt_hash, &p.hash_elem); // 해시 테이블에서 요소 검색한다.
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
@@ -184,7 +185,7 @@ vm_get_frame(void) // heesan 구현
 	list_push_back(&frame_table, &frame->frame_elem);
 
 	frame->page = NULL;
-
+	
 	return frame;
 }
 
@@ -223,9 +224,15 @@ void vm_dealloc_page(struct page *page)
 /* Claim the page that allocate on VA. */
 bool vm_claim_page(void *va UNUSED)
 {
+	
 	struct page *page = NULL;
+	struct thread *curr = thread_current();
 	/* TODO: Fill this function */
+	page = spt_find_page(&curr->spt,va);
 
+	if(page == NULL){
+		return false;
+	}
 	return vm_do_claim_page(page);
 }
 
@@ -239,9 +246,9 @@ vm_do_claim_page(struct page *page)
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	// heesan
+	// 페이지랑 프레임이랑 연결시켜주는 함수
 	if(install_page(page->va, frame->kva, page->writable)){
-		return swap_in(page,frame->kva);
+		return swap_in(page,frame->kva); // heesan??
 	}
 	return false;
 }

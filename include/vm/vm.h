@@ -87,6 +87,7 @@ struct page_operations {
 	enum vm_type type;
 };
 
+// ?????? > heesan 질문
 #define swap_in(page, v) (page)->operations->swap_in ((page), v)
 #define swap_out(page) (page)->operations->swap_out (page)
 #define destroy(page) \
