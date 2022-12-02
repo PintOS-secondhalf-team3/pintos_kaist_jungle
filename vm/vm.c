@@ -8,7 +8,6 @@
 
 struct list frame_table;
 
-
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void vm_init(void)
@@ -43,7 +42,6 @@ page_get_type(struct page *page)
 static struct frame *vm_get_victim(void);
 static bool vm_do_claim_page(struct page *page);
 static struct frame *vm_evict_frame(void);
-
 
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
@@ -165,22 +163,25 @@ vm_get_frame(void) // heesan 구현
 	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
 	/* TODO: Fill this function. */
 
-	ASSERT(frame != NULL);
-	ASSERT(frame->page == NULL);
 	// user pool에서 커널 가상 주소 공간으로 1page 할당
-	struct page *page = palloc_get_page(PAL_USER);
+	// struct page *page = palloc_get_page(PAL_USER);
+	
 	frame->kva = palloc_get_page(PAL_USER); // user pool에서 커널 가상 주소 공간으로 1page 할당
+
 	if (frame->kva == NULL)
 	{							  // 유저 풀 공간이 하나도 없다면
 		frame = vm_evict_frame(); // 새로운 프레임을 할당 받는다.
 		frame->page = NULL;
 		return frame;
 	}
-	list_push_back(&frame_table,&frame->frame_elem);
+	list_push_back(&frame_table, &frame->frame_elem);
+
 	frame->page = NULL;
+
+	ASSERT(frame != NULL);
+	ASSERT(frame->page == NULL);
 	return frame;
 }
-
 
 /* Growing the stack. */
 static void
