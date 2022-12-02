@@ -18,6 +18,10 @@
         "main.h": "c",
         "file.h": "c",
         "filesys.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "vm.h": "c",
+        "hash.h": "c",
+        "malloc.h": "c",
+        "inspect.h": "c"
     }
 }
