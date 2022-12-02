@@ -3,6 +3,7 @@
 
 #include "threads/thread.h"
 
+bool install_page(void *upage, void *kpage, bool writable);
 tid_t process_create_initd (const char *file_name);
 tid_t process_fork (const char *name, struct intr_frame *if_);
 int process_exec (void *f_name);

@@ -4,6 +4,7 @@
 #include "vm/vm.h"
 #include "vm/inspect.h"
 #include "lib/kernel/hash.h"
+#include "userprog/process.h"
 
 struct list frame_table;
 
@@ -109,8 +110,8 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
-	 /* TODO: The policy for eviction is up to you. */
-
+	/* TODO: The policy for eviction is up to you. */
+	
 	return victim;
 }
 
@@ -136,9 +137,10 @@ vm_get_frame (void) {
 	ASSERT (frame->page == NULL);
 	frame->kva = palloc_get_page(PAL_USER);
 	if (frame->kva ==NULL){
-		frame = vm_evict_frame();
-		frame->page = NULL;
-		return frame;
+		ASSERT (frame->page == NULL);
+		//frame = vm_evict_frame();
+		//frame->page = NULL;
+		//return frame;
 	}
 	list_push_back(&frame_table,&frame->frame_elem);
 	return frame;
@@ -178,8 +180,12 @@ vm_dealloc_page (struct page *page) {
 bool
 vm_claim_page (void *va UNUSED) {
 	struct page *page = NULL;
+	struct thread* curr = thread_current();
+	
 	/* TODO: Fill this function */
-
+	page = spt_find_page(&curr->spt,va);
+	if (page == NULL)
+		return false;
 	return vm_do_claim_page (page);
 }
 
@@ -193,8 +199,9 @@ vm_do_claim_page (struct page *page) {
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-
-	return swap_in (page, frame->kva);
+	if (install_page(page->va, frame->kva, page->writable))
+		return swap_in (page, frame->kva);
+	return false;
 }
 
 /* Initialize new supplemental page table */

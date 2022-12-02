@@ -50,6 +50,7 @@ struct page {
 
 	struct hash_elem hash_elem;
 	
+	bool writable;
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union {
@@ -80,6 +81,7 @@ struct page_operations {
 	enum vm_type type;
 };
 
+// 이부분 질문
 #define swap_in(page, v) (page)->operations->swap_in ((page), v)
 #define swap_out(page) (page)->operations->swap_out (page)
 #define destroy(page) \
