@@ -102,6 +102,9 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 {
 	int succ = false;
 	/* TODO: Fill this function. */
+	struct hash_elem *p = hash_insert(&spt->spt_hash, &page->hash_elem);
+	if (p == NULL);
+	succ = true;
 
 	return insert_page(&spt->spt_hash, page);
 }
@@ -229,7 +232,7 @@ bool vm_claim_page(void *va UNUSED)
 /* Claim the PAGE and set up the mmu. */
 static bool
 vm_do_claim_page(struct page *page)
-{
+{ // 가상 주소와 물리 주소 매핑( 성공, 실패 여부 리턴)
 	struct frame *frame = vm_get_frame();
 
 	/* Set links */
