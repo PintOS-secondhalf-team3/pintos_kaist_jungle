@@ -146,6 +146,7 @@ vm_evict_frame(void)
 {
 	struct frame *victim UNUSED = vm_get_victim();
 	/* TODO: swap out the victim and return the evicted frame. */
+	swap_out(victim->page);
 
 	return NULL;
 }
@@ -165,7 +166,7 @@ vm_get_frame(void) // heesan 구현
 
 	// user pool에서 커널 가상 주소 공간으로 1page 할당
 	// struct page *page = palloc_get_page(PAL_USER);
-	
+
 	frame->kva = palloc_get_page(PAL_USER); // user pool에서 커널 가상 주소 공간으로 1page 할당
 
 	if (frame->kva == NULL)
