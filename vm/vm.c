@@ -6,7 +6,6 @@
 #include "lib/kernel/hash.h"
 #include "include/threads/thread.h"
 
-
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
 void vm_init(void)
@@ -67,7 +66,7 @@ err:
 }
 
 /* Find VA from spt and return page. On error, return NULL. */
-
+// 인자로 받은 va(가상 주소)에 해당하는 페이지 번호를 spt에서 검색하여 페이지 번호를 추출하는 함수
 struct page *
 spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 // va를 기준으로 hash_table에서 elem을 찾는다
@@ -80,17 +79,19 @@ spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 
 /* Returns the page containing the given virtual address, or a null pointer if no such page exists. */
 struct page *
-page_lookup (const void *address) { // heesan
-  struct page p;
-  struct hash_elem *e;
+page_lookup(const void *address)
+{
+	struct page p;
+	struct hash_elem *e;
+	
+	// va가 가리키는 가상 페이지의 시작포인트(오프셋이 0으로 설정된 va) 반환
+	p.va = pg_round_down(address);
 
-  p.va = pg_round_down(address);
-
-  // hash_find : 가상 주소를 기반으로 페이지를 찾고 반환하는 함수입니다.
-  // 주어진 element와 같은 element가 hash안에 있는지 탐색한다.
-  // 성공하면 해당 element를, 실패하면 null 포인터로 반환한다.
-  e = hash_find (&thread_current()->spt.hash, &p.hash_elem); // 해시 테이블에서 요소 검색한다.
-  return e != NULL ? hash_entry (e, struct page, hash_elem) : NULL;
+	// hash_find : 가상 주소를 기반으로 페이지를 찾고 반환하는 함수
+	// 주어진 element와 같은 element가 hash안에 있는지 탐색
+	// 성공하면 해당 element를, 실패하면 null 포인터로 반환
+	e = hash_find(&thread_current()->spt.hash, &p.hash_elem); // 해시 테이블에서 요소 검색한다.
+	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
 /* Insert PAGE into spt with validation. */
@@ -99,16 +100,30 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 {
 	int succ = false;
 	/* TODO: Fill this function. */
-	if (!hash_insert(&spt->spt_hash, &page->hash_elem));
-		succ = true; // heesan
 
-	return succ;
+	return insert_page(&spt->spt_hash,page);
 }
+
+// heesan
+bool insert_page(struct hash *pages, struct page *p) {
+    if (!hash_insert(pages, &p->hash_elem))
+        return true;
+    else
+        return false;
+}
+
 
 void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 {
 	vm_dealloc_page(page);
 	return true;
+}
+
+bool delete_page(struct hash *pages, struct page *p){
+	if(!hash_delete(pages, &p->hash_elem))
+		return true;
+	else
+		return false;
 }
 
 /* Get the struct frame, that will be evicted. */
@@ -136,8 +151,11 @@ vm_evict_frame(void)
  * and return it. This always return valid address. That is, if the user pool
  * memory is full, this function evicts the frame to get the available memory
  * space.*/
+
+// user pool에서 새 물리적 페이지를 가져오는 함수
+// 성공적으로 가져오면 프레임을 할당하고 멤버를 초기화 한 후 반환
 static struct frame *
-vm_get_frame(void)
+vm_get_frame(void) // heesan 구현
 {
 	struct frame *frame = NULL;
 	/* TODO: Fill this function. */
@@ -223,19 +241,23 @@ void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
 }
 
 /* Returns a hash value for page p. */
+// 해시 테이블 초기화할 때 해시 값을 구해주는 함수의 포인터
 unsigned
-page_hash (const struct hash_elem *p_, void *aux UNUSED) {
-  const struct page *p = hash_entry (p_, struct page, hash_elem);
-  return hash_bytes (&p->va, sizeof p->va);
-  // hash_bytes : buf에서 시작하는 크기 바이트의 해시를 반환합니다.
+page_hash(const struct hash_elem *p_, void *aux UNUSED)
+{
+	const struct page *p = hash_entry(p_, struct page, hash_elem);
+	return hash_bytes(&p->va, sizeof p->va);
+	// hash_bytes : buf에서 시작하는 크기 바이트의 해시를 반환합니다.
 }
 
 /* Returns true if page a precedes page b. */
-bool
-page_less (const struct hash_elem *a_,
-           const struct hash_elem *b_, void *aux UNUSED) {
-  const struct page *a = hash_entry (a_, struct page, hash_elem);
-  const struct page *b = hash_entry (b_, struct page, hash_elem);
+// 해시 테이블 초기화할 때 해시 값을 구해주는 함수의 포인터
+// a가 b보다 작으면 true, 반대면 false
+bool page_less(const struct hash_elem *a_,
+			   const struct hash_elem *b_, void *aux UNUSED)
+{
+	const struct page *a = hash_entry(a_, struct page, hash_elem);
+	const struct page *b = hash_entry(b_, struct page, hash_elem);
 
-  return a->va < b->va;
+	return a->va < b->va;
 }
