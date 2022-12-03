@@ -9,7 +9,7 @@
 
 struct list frame_table;
 
-/* Initializes the virtual memory subsystem by invoking each subsystem's
+/* Initializes the virtual memory subsystem by invoking
  * intialize codes. */
 void vm_init(void)
 {
@@ -21,10 +21,10 @@ void vm_init(void)
 	register_inspect_intr();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
-	list_init(&frame_table); // frame_table 초기화
-	struct list_elem* start = list_begin(&frame_table);
+	list_init(&frame_table); // frame_table 리스트로 묶어서 초기화
 
-
+	// heesan 왜 여기서 start에 frame_table의 첫 요소를 할당해주었는가?
+	struct list_elem *start = list_begin(&frame_table);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -51,24 +51,47 @@ static struct frame *vm_evict_frame(void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
-bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writable,
-									vm_initializer *init, void *aux)
-{
+bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writable, vm_initializer *init, void *aux)
+{	// 전달된 vm_type에 따라 적절한 initializer를 가져와서 uninit_new를 호출하는 역할
+	// vm_alloc_page_with_initializer는 무조건 uninit type의 page를 만든다.
 
-	ASSERT(VM_TYPE(type) != VM_UNINIT)
+	ASSERT(VM_TYPE(type) != VM_UNINIT);
 
 	struct supplemental_page_table *spt = &thread_current()->spt;
 
 	/* Check whether the upage is already occupied or not. */
-	if (spt_find_page(spt, upage) == NULL)  // page fault
-	{
-		// TODO: Create the page, fetch the initialier according to the VM type
-		
-		// TODO: and then create "uninit" page struct by calling uninit_new. You
-		
-		// TODO: should modify the field after calling the uninit_new. */
+	if (spt_find_page(spt, upage) == NULL) // page fault
+	{	
+		// 유저 페이지가 아직 없으니까 초기화를 해줘야 함
 
-		/* TODO: Insert the page into the spt. */
+		// TODO: Create the page, fetch the initialier according to the VM type
+		struct page *page = (struct page *)malloc(sizeof(struct page));
+
+		// heesan ??? 이거 뭐지? 어떻게 해석하지?? 
+		typedef bool (*initializerFunc)(struct page *, enum vm_type, void *);
+		// initailizer의 타입을 맞춰줘야 uninit_new의 인자로 들어갈 수 있다.
+		initializerFunc initializer = NULL;
+
+		// vm_type에 따라 다른 initializer를 부른다.
+		switch (VM_TYPE(type))
+		{
+		case VM_ANON:
+			initializer = anon_initializer;
+			break;
+		case VM_FILE:
+			initializer = file_backed_initializer;
+			break;
+		default:
+			break;
+		}
+		// TODO: and then create "uninit" page struct by calling uninit_new.
+		// TODO: should modify the field after calling the uninit_new.
+		
+		// uninit_new에서 받아온 type으로 이 uninit type이 어떤 type으로 변할지와 같은 정보들을 page 구조체에 채워줌
+		uninit_new(page,upage,init,type,aux,initializer);
+		page->writable = writable;
+		// TODO: Insert the page into the spt.
+		return spt_insert_page(spt, page);
 	}
 err:
 	return false;
@@ -110,7 +133,8 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED,
 	int succ = false;
 	/* TODO: Fill this function. */
 	struct hash_elem *p = hash_insert(&spt->spt_hash, &page->hash_elem);
-	if (p == NULL);
+	if (p == NULL)
+		;
 	succ = true;
 
 	return insert_page(&spt->spt_hash, page);
@@ -191,7 +215,7 @@ vm_get_frame(void) // heesan 구현
 	list_push_back(&frame_table, &frame->frame_elem);
 
 	frame->page = NULL;
-	
+
 	return frame;
 }
 
@@ -230,13 +254,14 @@ void vm_dealloc_page(struct page *page)
 /* Claim the page that allocate on VA. */
 bool vm_claim_page(void *va UNUSED)
 {
-	
+
 	struct page *page = NULL;
 	struct thread *curr = thread_current();
 	/* TODO: Fill this function */
-	page = spt_find_page(&curr->spt,va);
+	page = spt_find_page(&curr->spt, va);
 
-	if(page == NULL){
+	if (page == NULL)
+	{
 		return false;
 	}
 	return vm_do_claim_page(page);
@@ -253,8 +278,9 @@ vm_do_claim_page(struct page *page)
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	// 페이지랑 프레임이랑 연결시켜주는 함수
-	if(install_page(page->va, frame->kva, page->writable)){
-		return swap_in(page,frame->kva); // heesan??
+	if (install_page(page->va, frame->kva, page->writable))
+	{
+		return swap_in(page, frame->kva); // heesan??
 	}
 	return false;
 }
@@ -262,7 +288,7 @@ vm_do_claim_page(struct page *page)
 /* Initialize new supplemental page table */
 void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 {
-	hash_init(spt, page_hash, page_less, NULL);
+	hash_init(spt, page_hash, page_less, NULL); // heesan
 }
 
 /* Copy supplemental page table from src to dst */

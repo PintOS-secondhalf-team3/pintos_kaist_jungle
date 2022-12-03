@@ -23,6 +23,7 @@ static const struct page_operations uninit_ops = {
 };
 
 /* DO NOT MODIFY this function */
+// uninit_new 는 페이지 한개를 uninit으로 만들어서 spt에 올려두는 함수
 void
 uninit_new (struct page *page, void *va, vm_initializer *init,
 		enum vm_type type, void *aux,
