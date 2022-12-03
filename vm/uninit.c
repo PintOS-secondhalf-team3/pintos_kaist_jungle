@@ -19,7 +19,11 @@ static const struct page_operations uninit_ops = {
 	.swap_in = uninit_initialize,
 	.swap_out = NULL,
 	.destroy = uninit_destroy,
+
+	// uninit type의 page는 lazy loading을 지원하기 위해 있다.
+	// 모든 페이지는 우선 uninit type으로 생성
 	.type = VM_UNINIT,
+
 };
 
 /* DO NOT MODIFY this function */
@@ -44,6 +48,9 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 }
 
 /* Initalize the page on first fault */
+
+// page initialization
+//3가지 종류의 page가 있는 만큼 각각의 page 종류에 따라 다른 초기화가 필요
 static bool
 uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
@@ -52,7 +59,12 @@ uninit_initialize (struct page *page, void *kva) {
 	vm_initializer *init = uninit->init;
 	void *aux = uninit->aux;
 
+	// 후반부
+	// enum vm_type type = uninit->type;
+
+
 	/* TODO: You may need to fix this function. */
+
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
 }

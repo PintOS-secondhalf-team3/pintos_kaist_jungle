@@ -62,10 +62,18 @@ struct page {
 	
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
-	union {
+	union { 
+		// page initialization
+		//3가지 종류의 page가 있는 만큼 각각의 page 종류에 따라 다른 초기화가 필요
+
 		// page의 세 가지 종류
 		struct uninit_page uninit;
+
+		// 파일에 기반하고 있지 않은(파일로부터 매핑되지 않은) 페이지
+		// 커널로부터 프로세스에게 할당된 일반적인 메모리 페이지
 		struct anon_page anon;
+
+		// 파일으로부터 매핑된 페이지
 		struct file_page file;
 #ifdef EFILESYS
 		struct page_cache page_cache;
@@ -93,7 +101,7 @@ struct page_operations {
 	enum vm_type type;
 };
 
-// ?????? > heesan 질문
+// 
 #define swap_in(page, v) (page)->operations->swap_in ((page), v)
 #define swap_out(page) (page)->operations->swap_out (page)
 #define destroy(page) \

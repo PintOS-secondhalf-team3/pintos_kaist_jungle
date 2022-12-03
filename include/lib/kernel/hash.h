@@ -36,7 +36,7 @@ struct hash_elem {
  * of the hash element.  See the big comment at the top of the
  * file for an example. */
 
-// elem이 소속되어있는 구조체의 포인터를 반환
+// hash elem 를 받아 해당 elem가 들어있는 구조체의 pointer를 return
 #define hash_entry(HASH_ELEM, STRUCT, MEMBER)                   \
 	((STRUCT *) ((uint8_t *) &(HASH_ELEM)->list_elem        \
 		- offsetof (STRUCT, MEMBER.list_elem)))
