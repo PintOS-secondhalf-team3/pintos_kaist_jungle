@@ -5,6 +5,7 @@
 #include "vm/inspect.h"
 #include "lib/kernel/hash.h"
 #include "userprog/process.h"
+//#include "lib/kernel/list.h"
 
 struct list frame_table;
 
@@ -20,6 +21,8 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_table);
+	struct list_elem* start = list_begin(&frame_table);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -60,7 +63,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 		/* TODO: Insert the page into the spt. */
 	}
-err:
+err: 
 	return false;
 }
 
