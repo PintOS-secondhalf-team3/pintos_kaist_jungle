@@ -21,6 +21,10 @@ void vm_init(void)
 	register_inspect_intr();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_table); // frame_table 초기화
+	struct list_elem* start = list_begin(&frame_table);
+
+
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -55,12 +59,14 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 
 	struct supplemental_page_table *spt = &thread_current()->spt;
 
-	/* Check wheter the upage is already occupied or not. */
-	if (spt_find_page(spt, upage) == NULL)
+	/* Check whether the upage is already occupied or not. */
+	if (spt_find_page(spt, upage) == NULL)  // page fault
 	{
-		/* TODO: Create the page, fetch the initialier according to the VM type,
-		 * TODO: and then create "uninit" page struct by calling uninit_new. You
-		 * TODO: should modify the field after calling the uninit_new. */
+		// TODO: Create the page, fetch the initialier according to the VM type
+		
+		// TODO: and then create "uninit" page struct by calling uninit_new. You
+		
+		// TODO: should modify the field after calling the uninit_new. */
 
 		/* TODO: Insert the page into the spt. */
 	}
