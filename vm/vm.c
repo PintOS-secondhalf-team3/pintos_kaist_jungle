@@ -287,14 +287,20 @@ vm_do_claim_page(struct page *page)
 
 /* Initialize new supplemental page table */
 void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
-{
-	hash_init(spt, page_hash, page_less, NULL); // heesan
+{	// 후반부
+	struct hash* page_table = malloc(sizeof(struct hash)); // page_table에 메모리 할당
+	hash_init(page_table, page_hash, page_less, NULL); // 해시테이블 초기화
+
+	// 왜 빨간줄??
+	spt->spt_hash = page_table; // spt에 해당 page_table 연결
+	// spt 초기화 끝
 }
 
 /* Copy supplemental page table from src to dst */
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
-								  struct supplemental_page_table *src UNUSED)
+struct supplemental_page_table *src UNUSED)
 {
+
 }
 
 /* Free the resource hold by the supplemental page table */

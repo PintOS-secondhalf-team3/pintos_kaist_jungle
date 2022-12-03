@@ -43,6 +43,8 @@ struct thread;
  * uninit_page, file_page, anon_page, and page cache (project4).
  * DO NOT REMOVE/MODIFY PREDEFINED MEMBER OF THIS STRUCTURE. */
 struct page {
+	
+	// 해당 operations는 page 구조체를 통해 언제든 요청 될 수 있게 되어있음.
 	const struct page_operations *operations;
 
 	// 키가 되는 가상 주소
@@ -51,7 +53,9 @@ struct page {
 
 	
 	/* Your implementation */
+	/* --- Project 3: VM-SPT ---*/
 	struct hash_elem hash_elem; /*spt테이블에서 페이지를 찾기 위해서 hash_elem 필요함이 hash_elem을 타고 struct page 로 가서 메타데이터를 알 수가 있다.*/
+
 	bool writable; // wrtie 가능한지 여부
 
 
@@ -59,6 +63,7 @@ struct page {
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union {
+		// page의 세 가지 종류
 		struct uninit_page uninit;
 		struct anon_page anon;
 		struct file_page file;
@@ -81,6 +86,7 @@ struct frame {
  * Put the table of "method" into the struct's member, and
  * call it whenever you needed. */
 struct page_operations {
+	// 각 페이지가 수행해야 할 수 있는 작업들이 function pointer 형태로 저장
 	bool (*swap_in) (struct page *, void *);
 	bool (*swap_out) (struct page *);
 	void (*destroy) (struct page *);
@@ -96,8 +102,8 @@ struct page_operations {
 /* Representation of current process's memory space.
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
-struct supplemental_page_table {
-	struct hash spt_hash; // hash 자료구조 방식의 spt임
+struct supplemental_page_table { // page fault가 발생 -> 이런 상황 해결 -> page table보다 더 많은 정보를 담은 page table인 spt.
+	struct hash* spt_hash; // hash 자료구조 방식의 spt임
 };
 
 #include "threads/thread.h"
