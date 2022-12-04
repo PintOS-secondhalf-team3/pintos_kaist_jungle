@@ -35,17 +35,22 @@ struct hash_elem {
  * name of the outer structure STRUCT and the member name MEMBER
  * of the hash element.  See the big comment at the top of the
  * file for an example. */
+
+// hash elem 를 받아 해당 elem가 들어있는 구조체의 pointer를 return
 #define hash_entry(HASH_ELEM, STRUCT, MEMBER)                   \
 	((STRUCT *) ((uint8_t *) &(HASH_ELEM)->list_elem        \
 		- offsetof (STRUCT, MEMBER.list_elem)))
 
 /* Computes and returns the hash value for hash element E, given
  * auxiliary data AUX. */
+// 주어진 aux데이터에서 해시 요소에 대한 해시 값을 계산하고 반환 함
+// elem이 소속되어있는 hash의 unsigned int형 데이터를 반환
 typedef uint64_t hash_hash_func (const struct hash_elem *e, void *aux);
 
 /* Compares the value of two hash elements A and B, given
  * auxiliary data AUX.  Returns true if A is less than B, or
  * false if A is greater than or equal to B. */
+// 해시 요소들을 비교하는 함수
 typedef bool hash_less_func (const struct hash_elem *a,
 		const struct hash_elem *b,
 		void *aux);
@@ -54,7 +59,9 @@ typedef bool hash_less_func (const struct hash_elem *a,
  * data AUX. */
 typedef void hash_action_func (struct hash_elem *e, void *aux);
 
+
 /* Hash table. */
+// struct hash에는 직접 접근할 수 없기 때문에 필요시에는 hash table function과 macro를 사용한다. hasg table은 struct hash_elem을 리스트의 인자로 가진다.
 struct hash {
 	size_t elem_cnt;            /* Number of elements in table. */
 	size_t bucket_cnt;          /* Number of buckets, a power of 2. */

@@ -2,6 +2,8 @@
 #define VM_VM_H
 #include <stdbool.h>
 #include "threads/palloc.h"
+#include "lib/kernel/hash.h"
+
 
 enum vm_type {
 	/* page not initialized */
@@ -41,17 +43,37 @@ struct thread;
  * uninit_page, file_page, anon_page, and page cache (project4).
  * DO NOT REMOVE/MODIFY PREDEFINED MEMBER OF THIS STRUCTURE. */
 struct page {
+	
+	// 해당 operations는 page 구조체를 통해 언제든 요청 될 수 있게 되어있음.
 	const struct page_operations *operations;
+
+	// 키가 되는 가상 주소
 	void *va;              /* Address in terms of user space */
 	struct frame *frame;   /* Back reference for frame */
 
+	
 	/* Your implementation */
+	/* --- Project 3: VM-SPT ---*/
+	struct hash_elem hash_elem; /*spt테이블에서 페이지를 찾기 위해서 hash_elem 필요함이 hash_elem을 타고 struct page 로 가서 메타데이터를 알 수가 있다.*/
 
+	bool writable; // wrtie 가능한지 여부
+
+
+	
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
-	union {
+	union { 
+		// page initialization
+		//3가지 종류의 page가 있는 만큼 각각의 page 종류에 따라 다른 초기화가 필요
+
+		// page의 세 가지 종류
 		struct uninit_page uninit;
+
+		// 파일에 기반하고 있지 않은(파일로부터 매핑되지 않은) 페이지
+		// 커널로부터 프로세스에게 할당된 일반적인 메모리 페이지
 		struct anon_page anon;
+
+		// 파일으로부터 매핑된 페이지
 		struct file_page file;
 #ifdef EFILESYS
 		struct page_cache page_cache;
@@ -60,9 +82,11 @@ struct page {
 };
 
 /* The representation of "frame" */
+// 물리적 메모리를 나타냄
 struct frame {
-	void *kva;
-	struct page *page;
+	void *kva; // 커널 가상 주소 << 물리메모리 프레임이랑 일대일로 매핑되어 있는 가상 주소
+	struct page *page; // 페이지 구조
+	struct list_elem frame_elem; // 
 };
 
 /* The function table for page operations.
@@ -70,12 +94,14 @@ struct frame {
  * Put the table of "method" into the struct's member, and
  * call it whenever you needed. */
 struct page_operations {
+	// 각 페이지가 수행해야 할 수 있는 작업들이 function pointer 형태로 저장
 	bool (*swap_in) (struct page *, void *);
 	bool (*swap_out) (struct page *);
 	void (*destroy) (struct page *);
 	enum vm_type type;
 };
 
+// 
 #define swap_in(page, v) (page)->operations->swap_in ((page), v)
 #define swap_out(page) (page)->operations->swap_out (page)
 #define destroy(page) \
@@ -84,7 +110,8 @@ struct page_operations {
 /* Representation of current process's memory space.
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
-struct supplemental_page_table {
+struct supplemental_page_table { // page fault가 발생 -> 이런 상황 해결 -> page table보다 더 많은 정보를 담은 page table인 spt.
+	struct hash* spt_hash; // hash 자료구조 방식의 spt임
 };
 
 #include "threads/thread.h"

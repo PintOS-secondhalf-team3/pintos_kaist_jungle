@@ -24,8 +24,11 @@ static void rehash (struct hash *);
 bool
 hash_init (struct hash *h,
 		hash_hash_func *hash, hash_less_func *less, void *aux) {
+			// 인자로 받는 함수들로 해시 테이블의 해시들을 초기화 함
 	h->elem_cnt = 0;
 	h->bucket_cnt = 4;
+
+	// 성공하면 메모리로 할당받고, 실패하면 메모리에 할당안됨
 	h->buckets = malloc (sizeof *h->buckets * h->bucket_cnt);
 	h->hash = hash;
 	h->less = less;
@@ -48,7 +51,7 @@ hash_init (struct hash *h,
    hash_replace(), or hash_delete(), yields undefined behavior,
    whether done in DESTRUCTOR or elsewhere. */
 void
-hash_clear (struct hash *h, hash_action_func *destructor) {
+hash_clear (struct hash *h, hash_action_func *destructor) { // hash에서 모든 elem 제거 ( 반드시 이 hash는 hash_init()을 거쳤어야 함)
 	size_t i;
 
 	for (i = 0; i < h->bucket_cnt; i++) {
@@ -77,6 +80,7 @@ hash_clear (struct hash *h, hash_action_func *destructor) {
    hash_insert(), hash_replace(), or hash_delete(), yields
    undefined behavior, whether done in DESTRUCTOR or
    elsewhere. */
+// 인자 action이 존재한다면, hash안의 각 elem마다 호출한다. hash_clear와 다른 점은, hash 자체를 free시킨다는 점이다.
 void
 hash_destroy (struct hash *h, hash_action_func *destructor) {
 	if (destructor != NULL)
@@ -224,12 +228,14 @@ hash_cur (struct hash_iterator *i) {
 }
 
 /* Returns the number of elements in H. */
+// hash안에 저장되어있는 elem 의 수를 반환함
 size_t
 hash_size (struct hash *h) {
 	return h->elem_cnt;
 }
 
 /* Returns true if H contains no elements, false otherwise. */
+// hash가 비어있다면 True 반환
 bool
 hash_empty (struct hash *h) {
 	return h->elem_cnt == 0;
@@ -240,6 +246,7 @@ hash_empty (struct hash *h) {
 #define FNV_64_BASIS 0xcbf29ce484222325UL
 
 /* Returns a hash of the SIZE bytes in BUF. */
+// 주어진 값을 주어진 size크기로 적당히 변환시키는 함수
 uint64_t
 hash_bytes (const void *buf_, size_t size) {
 	/* Fowler-Noll-Vo 32-bit hash, for bytes. */
@@ -256,6 +263,7 @@ hash_bytes (const void *buf_, size_t size) {
 }
 
 /* Returns a hash of string S. */
+// null 이 제거된 strung s의 hash를 반환
 uint64_t
 hash_string (const char *s_) {
 	const unsigned char *s = (const unsigned char *) s_;
