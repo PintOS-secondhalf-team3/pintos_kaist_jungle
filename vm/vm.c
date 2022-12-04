@@ -121,10 +121,11 @@ struct page *
 page_lookup(const void *address)
 {
 	struct page p;
+	// struct page *p = (struct page *)malloc(sizeof(struct page)); // ??
 	struct hash_elem *e;
 
 	// va가 가리키는 가상 페이지의 시작포인트(오프셋이 0으로 설정된 va) 반환
-	p.va = pg_round_down(address);
+	p.va = pg_round_down(address); // vaddr의 페이지 받음
 
 	// hash_find : 가상 주소를 기반으로 페이지를 찾고 반환하는 함수
 	// 주어진 element와 같은 element가 hash안에 있는지 탐색
