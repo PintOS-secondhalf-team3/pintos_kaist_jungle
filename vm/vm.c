@@ -300,10 +300,10 @@ vm_do_claim_page(struct page *page)
 void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 {					
 	//-------project3-memory_management-start--------------									   
-	struct hash *page_table = malloc(sizeof(struct hash)); // page_table에 메모리 할당
-	hash_init(page_table, page_hash, page_less, NULL);	   // 해시테이블 초기화
+	// struct hash *page_table = malloc(sizeof(struct hash)); // page_table에 메모리 할당
+	hash_init(&spt->spt_hash, page_hash, page_less, NULL);	   // 해시테이블 초기화
 
-	spt->spt_hash = page_table; // spt에 해당 page_table 연결
+	// spt->spt_hash = page_table; // spt에 해당 page_table 연결
 	//-------project3-memory_management-end----------------
 }
 
