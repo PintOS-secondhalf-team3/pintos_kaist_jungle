@@ -50,10 +50,12 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 /* Initalize the page on first fault */
 
 // page initialization
-//3가지 종류의 page가 있는 만큼 각각의 page 종류에 따라 다른 초기화가 필요
+// Initializes the page on the first fault
+// 3가지 종류의 page가 있는 만큼 각각의 page 종류에 따라 다른 초기화가 필요
 static bool
 uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
+	// vm_initializer 및 aux를 가져오고 함수 포인터를 통해 해당 page_initializer를 호출합니다.
 
 	/* Fetch first, page_initialize may overwrite the values */
 	vm_initializer *init = uninit->init;
