@@ -856,6 +856,7 @@ lazy_load_segment(struct page *page, void *aux)
  *
  * Return true if successful, false if a memory allocation error
  * or disk read error occurs. */
+// 프로세스가 시작되기 전, 프로세스가 실행할 프로그램에 관한 데이터를 불러오는 역할
 static bool
 load_segment(struct file *file, off_t ofs, uint8_t *upage,
 			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)

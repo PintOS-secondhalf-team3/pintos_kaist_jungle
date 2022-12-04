@@ -137,20 +137,21 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED, struct page *pa
 	/* TODO: Fill this function. */
 	struct hash_elem *p = hash_insert(&spt->spt_hash, &page->hash_elem);
 	if (p == NULL)
-		;
-	succ = true;
+	{
+		succ = true;
+	}
 
-	return insert_page(&spt->spt_hash, page);
+	return succ;
 }
 
 // heesan
-bool insert_page(struct hash *pages, struct page *p)
-{
-	if (!hash_insert(pages, &p->hash_elem))
-		return true;
-	else
-		return false;
-}
+// bool insert_page(struct hash *pages, struct page *p)
+// {
+// if (!hash_insert(pages, &p->hash_elem))
+// 		return true;
+// 	else
+// 		return false;
+// }
 
 void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 {
