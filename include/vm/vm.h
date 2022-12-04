@@ -4,6 +4,10 @@
 #include "threads/palloc.h"
 #include "lib/kernel/hash.h"
 
+bool page_less(const struct hash_elem *a_,
+			   const struct hash_elem *b_, void *aux UNUSED);
+			   unsigned
+bool page_hash(const struct hash_elem *p_, void *aux UNUSED);
 
 enum vm_type {
 	/* page not initialized */
