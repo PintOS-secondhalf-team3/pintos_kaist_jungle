@@ -22,6 +22,7 @@
         "vm.h": "c",
         "hash.h": "c",
         "malloc.h": "c",
-        "inspect.h": "c"
+        "inspect.h": "c",
+        "uninit.h": "c"
     }
 }
