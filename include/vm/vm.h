@@ -51,14 +51,13 @@ struct page {
 	void *va;              /* Address in terms of user space */
 	struct frame *frame;   /* Back reference for frame */
 
-	
 	/* Your implementation */
 	/* --- Project 3: VM-SPT ---*/
-	struct hash_elem hash_elem; /*spt테이블에서 페이지를 찾기 위해서 hash_elem 필요함이 hash_elem을 타고 struct page 로 가서 메타데이터를 알 수가 있다.*/
-
+	//-------project3-memory_management-start--------------
+	struct hash_elem hash_elem; /*spt테이블에서 페이지를 찾기 위해서 hash_elem 필요함. 이 hash_elem을 타고 struct page 로 가서 메타데이터를 알 수가 있다.*/
+	
 	bool writable; // wrtie 가능한지 여부
-
-
+	//-------project3-memory_management-end----------------
 	
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -84,7 +83,7 @@ struct page {
 /* The representation of "frame" */
 // 물리적 메모리를 나타냄
 struct frame {
-	void *kva; // 커널 가상 주소 << 물리메모리 프레임이랑 일대일로 매핑되어 있는 가상 주소
+	void *kva; // 커널 가상 주소: 물리메모리 프레임이랑 일대일로 매핑되어 있는 가상 주소
 	struct page *page; // 페이지 구조
 	struct list_elem frame_elem; // 
 };
