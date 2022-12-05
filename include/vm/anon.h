@@ -5,7 +5,7 @@ struct page;
 enum vm_type;
 
 struct anon_page {
-    // struct page anon_p; // heesan 주의☠️ ?? 나중에 사용
+    // struct page anon_p; // heesan 주의☠️ ??
 };
 
 void vm_anon_init (void);

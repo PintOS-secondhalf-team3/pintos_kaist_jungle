@@ -72,20 +72,19 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		typedef bool (*initializerFunc)(struct page *, enum vm_type, void *);
 
 		// initailizer의 타입을 맞춰줘야 uninit_new의 인자로 들어갈 수 있다.
-
 		initializerFunc initializer = NULL;
 
 		// vm_type에 따라 다른 initializer를 부른다.
 		switch (VM_TYPE(type))
 		{
-		case VM_ANON:
-			initializer = anon_initializer;
-			break;
-		case VM_FILE:
-			initializer = file_backed_initializer;
-			break;
-		default:
-			break;
+			case VM_ANON:
+				initializer = anon_initializer;
+				break;
+			case VM_FILE:
+				initializer = file_backed_initializer;
+				break;
+			default:
+				break;
 		}
 		// TODO: and then create "uninit" page struct by calling uninit_new.
 		// TODO: should modify the field after calling the uninit_new.
@@ -130,7 +129,7 @@ page_lookup(const void *address)
 	// hash_find : 가상 주소를 기반으로 페이지를 찾고 반환하는 함수
 	// 주어진 element와 같은 element가 hash안에 있는지 탐색
 	// 성공하면 해당 element를, 실패하면 null 포인터로 반환
-	e = hash_find(&thread_current()->spt->spt_hash, &p.hash_elem); // 해시 테이블에서 요소 검색한다.
+	e = hash_find(&thread_current()->spt.spt_hash, &p.hash_elem); // 해시 테이블에서 요소 검색한다.
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
