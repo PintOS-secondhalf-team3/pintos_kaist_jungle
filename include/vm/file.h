@@ -6,8 +6,14 @@
 struct page;
 enum vm_type;
 
+//-------project3-memory_management-start--------------
 struct file_page {
+	struct file *file;
+	off_t ofs;
+	uint32_t read_bytes;
+	uint32_t zero_bytes;
 };
+//-------project3-memory_management-end----------------
 
 void vm_file_init (void);
 bool file_backed_initializer (struct page *page, enum vm_type type, void *kva);

@@ -18,6 +18,7 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "include/vm/file.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -859,8 +860,8 @@ lazy_load_segment(struct page *page, void *aux)
 static bool
 load_segment(struct file *file, off_t ofs, uint8_t *upage,
 			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)
-{ // 후반부(project3) 구현 -> 핵심을 수정해야 함
-	// vm_alloc_page_with_initializer를 호출하여 보류 중인 페이지 개체를 생성
+{ 	// 후반부(project3) 구현 -> 핵심을 수정해야 함
+	// vm_alloc_page_with_initializer()를 호출하여 보류 중인 페이지 개체를 생성
 	// 페이지 폴트가 발생하면 세그먼트가 실제로 파일에서 로드되는 때임.
 	ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT(pg_ofs(upage) == 0);
@@ -875,7 +876,14 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		struct file_page* aux_file_page;
+		aux_file_page->file = file;
+		aux_file_page->ofs = ofs;
+		aux_file_page->read_bytes = read_bytes;
+		aux_file_page->zero_bytes = zero_bytes;
+
+		void *aux = aux_file_page;
+		// void *aux = NULL:
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
 											writable, lazy_load_segment, aux))
 			// vm_alloc_page_with_initializer의 5번째 인자인 aux는 load_segment에 설정한 정보

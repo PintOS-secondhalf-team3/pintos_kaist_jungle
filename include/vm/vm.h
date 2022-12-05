@@ -135,4 +135,11 @@ void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 
+// 추가한 함수
+unsigned page_hash(const struct hash_elem *p_, void *aux UNUSED);
+bool page_less(const struct hash_elem *a_,
+			   const struct hash_elem *b_, void *aux UNUSED);
+struct page *
+page_lookup(const void *address);
+
 #endif  /* VM_VM_H */
