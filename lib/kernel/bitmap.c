@@ -296,7 +296,7 @@ bitmap_scan_and_flip (struct bitmap *b, size_t start, size_t cnt, bool value) {
 		bitmap_set_multiple (b, idx, cnt, !value);
 	return idx;
 }
-
+
 /* File input and output. */
 
 #ifdef FILESYS

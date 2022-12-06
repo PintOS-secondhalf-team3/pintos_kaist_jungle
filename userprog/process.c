@@ -21,6 +21,9 @@
 #include "include/vm/file.h"
 #ifdef VM
 #include "vm/vm.h"
+// --------------------project3 Anonymous Page start---------
+#include "vm/file.h"
+// --------------------project3 Anonymous Page end---------
 #endif
 
 static void process_cleanup(void);
@@ -868,8 +871,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT(pg_ofs(upage) == 0);
 	ASSERT(ofs % PGSIZE == 0);
 
-	while (read_bytes > 0 || zero_bytes > 0)
-	{
+	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
@@ -888,8 +890,8 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 			// vm_alloc_page_with_initializer의 5번째 인자인 aux는 load_segment에 설정한 정보
 			// 이 정보를 사용하여 세그먼트를 읽을 파일을 찾고 결국 세그먼트를 메모리로 읽어야 함
 			return false;
+		}
 
-		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
@@ -900,7 +902,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-static bool
+bool  // 기존 앞에 static 붙어있었음.
 setup_stack(struct intr_frame *if_)
 {	
 	// 스택을 식별하는 방법을 제공해야 할 수도 있음
