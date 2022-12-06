@@ -98,7 +98,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 		// TODO: Insert the page into the spt.
 		return spt_insert_page(spt, page);	// spt에 page를 넣는다
 	}
-err:
+err: 
 	return false;
 }
 
@@ -116,6 +116,13 @@ spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 	
 	
 	return page;
+	// struct page *temp_page;
+	// temp_page->va = va;
+	
+	// struct hash_elem* hash_elem = hash_find(&spt->spt_hash, &temp_page->hash_elem);
+	// /* TODO: Fill this function. */
+	// struct page* page = hash_entry(hash_elem, struct page, hash_elem);
+	// return page;
 }
 
 //-------project3-memory_management-start--------------
@@ -196,27 +203,12 @@ vm_evict_frame(void)
 static struct frame *
 vm_get_frame(void) 
 {
+vm_get_frame (void) {
+	struct frame *frame = (struct frame*)malloc(sizeof(struct frame));
 	/* TODO: Fill this function. */
 
-	// 새로운 frame 만들기
-	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
-
-	// physical memory의 user pool에서 1page를 할당하고, 이에 해당하는 kva를 반환
-	frame->kva = palloc_get_page(PAL_USER);	// 새로 만든 frame과 새로 할당받은 page를 연결
-
-	if (frame->kva == NULL) // 유저 풀 공간이 하나도 없다면
-	{
-		PANIC ("todo");
-		// frame = vm_evict_frame(); // 새로운 프레임을 할당
-		// frame->page = NULL;
-		// return frame;
-	}
-	list_push_back(&frame_table, &frame->frame_elem);	// frame table 리스트에 frame elem을 넣음
-
-	frame->page = NULL;	// frame의 page멤버 초기화
-	ASSERT(frame != NULL);
-	ASSERT(frame->page == NULL);
-
+	ASSERT (frame != NULL);
+	ASSERT (frame->page == NULL);
 	return frame;
 }
 //-------project3-memory_management-end----------------
