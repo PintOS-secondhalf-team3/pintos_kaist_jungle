@@ -6,6 +6,7 @@
 #include "lib/kernel/hash.h"
 #include "include/threads/thread.h"
 #include "userprog/process.h"
+#include "threads/vaddr.h"
 
 //-------project3-memory_management-start--------------
 struct list frame_table;	// frame_table을 전역으로 선언함
@@ -53,28 +54,31 @@ static struct frame *vm_evict_frame(void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
+/* uninit type의 page를 만든다
+   page 생성 시, 전달된 vm_type에 따라 적절한 initializer를 가져와서 uninit_new를 호출하여 생성한다.
+*/
 bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writable, vm_initializer *init, void *aux)
-{	// 전달된 vm_type에 따라 적절한 initializer를 가져와서 uninit_new를 호출하는 역할
-	// vm_alloc_page_with_initializer는 무조건 uninit type의 page를 만든다.
-
+{	
+	// type이 VM_ANON일 경우
+		// init = lazy_load_segment, type = VM_ANON, page_initializer = anon_initializer
+	// type이 VM_FILE일 경우
+		// init = lazy_load_segment, type = VM_FILE, page_initializer = file_backed_initializer
 	ASSERT(VM_TYPE(type) != VM_UNINIT);
 
 	struct supplemental_page_table *spt = &thread_current()->spt;
 
 	/* Check whether the upage is already occupied or not. */
-	if (spt_find_page(spt, upage) == NULL) // page fault
+	if (spt_find_page(spt, upage) == NULL) // page fault나면(spt에 upage가 없으면) if문 진입
 	{
 		// 유저 페이지가 아직 없으니까 초기화를 해줘야 함
 
 		// TODO: Create the page, fetch the initialier according to the VM type
 		struct page *page = (struct page *)malloc(sizeof(struct page));
-
+		// initailizer의 타입을 맞춰줘야 uninit_new의 인자로 들어갈 수 있음
 		typedef bool (*initializerFunc)(struct page *, enum vm_type, void *);
-
-		// initailizer의 타입을 맞춰줘야 uninit_new의 인자로 들어갈 수 있다.
 		initializerFunc initializer = NULL;
 
-		// vm_type에 따라 다른 initializer를 부른다.
+		// vm_type에 따라 다른 initializer를 저장
 		switch (VM_TYPE(type))
 		{
 			case VM_ANON:
@@ -83,18 +87,16 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 			case VM_FILE:
 				initializer = file_backed_initializer;
 				break;
-			default:
-				break;
+			// default:
+			// 	break;
 		}
 		// TODO: and then create "uninit" page struct by calling uninit_new.
 		// TODO: should modify the field after calling the uninit_new.
-
-		// uninit_new에서 받아온 type으로 이 uninit type이 어떤 type으로 변할지와 같은 정보들을 page 구조체에 채워줌
-		// uninit_new 6번째 인자에는 생김새가 같은 인자가 들어가야 함.
+		// uninit_new에게 인자로 받아온 type에 따라 다른 인자들을 넘겨주어, page 구조체에 넣는다.
 		uninit_new(page, upage, init, type, aux, initializer);
 		page->writable = writable;
 		// TODO: Insert the page into the spt.
-		return spt_insert_page(spt, page);
+		return spt_insert_page(spt, page);	// spt에 page를 넣는다
 	}
 err:
 	return false;
@@ -105,11 +107,13 @@ err:
 struct page *
 spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 // va를 기준으로 hash_table에서 elem을 찾는다
+// va를 통해 page structure의 시작 주소를 구함
 {
+	/* TODO: Fill this function. */
 	//-------project3-memory_management-start--------------
 	struct page *page = page_lookup(va); 
 	//-------project3-memory_management-end----------------
-	/* TODO: Fill this function. */
+	
 	
 	return page;
 }
@@ -119,17 +123,16 @@ spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 struct page *
 page_lookup(const void *address)
 {
-	struct page p;
-	// struct page *p = (struct page *)malloc(sizeof(struct page)); // ??
+	struct page* p = (struct page*)malloc(sizeof(struct page));	// malloc으로 수정
 	struct hash_elem *e;
 
 	// va가 가리키는 가상 페이지의 시작포인트(오프셋이 0으로 설정된 va) 반환
-	p.va = pg_round_down(address); // vaddr의 페이지 받음
+	p->va = pg_round_down(address);
 
 	// hash_find : 가상 주소를 기반으로 페이지를 찾고 반환하는 함수
 	// 주어진 element와 같은 element가 hash안에 있는지 탐색
 	// 성공하면 해당 element를, 실패하면 null 포인터로 반환
-	e = hash_find(&thread_current()->spt.spt_hash, &p.hash_elem); // 해시 테이블에서 요소 검색한다.
+	e = hash_find(&thread_current()->spt.spt_hash, &p->hash_elem); // 해시 테이블에서 요소 검색한다.
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
@@ -138,16 +141,14 @@ page_lookup(const void *address)
 
 bool spt_insert_page(struct supplemental_page_table *spt UNUSED, struct page *page UNUSED)
 { // 인자로 주어진 page를 spt에 넣는 함수. 이미 spt에 있는 page인지도 검증해야 함.
-
-	int succ = false;
 	/* TODO: Fill this function. */
 
-	// hash_insert: spt에 page를 새로 넣었으면 NULL 반환, 이미 spt에 page가 존재한다면 해당 page의 hash_elem을 반환
-	struct hash_elem *p = hash_insert(&spt->spt_hash, &page->hash_elem);
-	if (p == NULL)
-		succ = true;
-	
-	return succ;
+	// hash_insert: spt에 page를 새로 넣었으면 NULL 반환, 
+	// 이미 spt에 page가 존재한다면 해당 page의 hash_elem을 반환
+	if (hash_insert(&spt->spt_hash, &page->hash_elem) == NULL){
+		return true;
+	}
+	return false;
 }
 //-------project3-memory_management-end----------------
 
@@ -195,12 +196,10 @@ vm_evict_frame(void)
 static struct frame *
 vm_get_frame(void) 
 {
+	/* TODO: Fill this function. */
+
 	// 새로운 frame 만들기
 	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
-
-	ASSERT(frame != NULL);
-	ASSERT(frame->page == NULL);
-	/* TODO: Fill this function. */
 
 	// physical memory의 user pool에서 1page를 할당하고, 이에 해당하는 kva를 반환
 	frame->kva = palloc_get_page(PAL_USER);	// 새로 만든 frame과 새로 할당받은 page를 연결
@@ -215,6 +214,8 @@ vm_get_frame(void)
 	list_push_back(&frame_table, &frame->frame_elem);	// frame table 리스트에 frame elem을 넣음
 
 	frame->page = NULL;	// frame의 page멤버 초기화
+	ASSERT(frame != NULL);
+	ASSERT(frame->page == NULL);
 
 	return frame;
 }
@@ -236,11 +237,32 @@ vm_handle_wp(struct page *page UNUSED)
 // page fault는 user program이 진행되면서 program이 물리 메모리에 있을거라고 생각하면서
 // 접근 하는데 실제로는 원하는 데이터가 물리 메모리에 load 혹은 저장되어있지 않을 경우 발생함
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
-{ // 후반부 요거 구현하면 fork제외 project2 전부 통과해야 함
+{ 	
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
+
+	// --------------------project3 Anonymous Page start---------
+	// 먼저 유효한 page fault인지 확인
+	if (is_kernel_vaddr(addr)) {
+        return false;
+	}
+
+    void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
+    if (not_present){
+        if (!vm_claim_page(addr)) {
+            if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) {
+                vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+                return true;
+            }
+            return false;
+        }
+        else
+            return true;
+    }
+    return false;
+	// --------------------project3 Anonymous Page end----------
 
 	return vm_do_claim_page(page);
 }
@@ -256,54 +278,59 @@ void vm_dealloc_page(struct page *page)
 //-------project3-memory_management-start--------------
 
 /* Claim the page that allocate on VA. */
-// 할당할 페이지를 요청함.
+/* 할당할 페이지를 요청함.					*/
 bool vm_claim_page(void *va UNUSED)
 { 
 	struct page *page = NULL;
 	struct thread *curr = thread_current();
 	/* TODO: Fill this function */
-	page = spt_find_page(&curr->spt, va); // 먼저 페이지를 가져온다.
+	page = spt_find_page(&curr->spt, va); // 먼저 spt에서 va에 해당하는 page를 가져온다
 
-	if (page == NULL)
-	{
+	if (page == NULL) {
 		return false;
 	}
-	return vm_do_claim_page(page); // 해당 페이지와 함께 vm_do_claim_page를 호출
+
+
+	// 물리 frame을 새로 할당받고 이를 인자로 넘겨준 page와 연결함, 또한 page table entry에 해당 정보를 매핑함
+	return vm_do_claim_page(page); 
 }
 
 /* Claim the PAGE and set up the mmu. */
-/* claim : 물리 프레임을 페이지에 할당하는 것
-   vm_get_frame()을 호출하여 frame을 얻고 MMU를 설정
+/* 
+   물리 frame을 새로 할당받고 이를 인자로 넘겨준 page와 연결함, 또한 page table entry에 해당 정보를 매핑함
+   (claim : 물리 프레임을 페이지에 할당하는 것)
 */
 static bool
-vm_do_claim_page(struct page *page)
-{ // 가상 주소와 물리 주소 매핑( 성공, 실패 여부 리턴)
+vm_do_claim_page(struct page *page)	
+{ 
 	struct frame *frame = vm_get_frame();
+	// frame과 page 연결
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
-	// install_page: kva와 va를 연결해주는 함수
-	// -> 가상 주소에서 페이지테이블의 물리적 주소로 매핑
+	// install_page: page와 frame의 연결정보를 pml4에 추가하는 함수
+	// 페이지테이블에 frame과 page의 연결을 추가함
 	if (install_page(page->va, frame->kva, page->writable))
 	{
-		return swap_in(page, frame->kva); // 우니스 블로그 보고 함, 왜 인지 아직 이해 못 함???????
-										// swap in -> disk(swap area)에서 메모리로 데이터 가져옴
-										// page fault나면 lazy loading 시작
+		// swap in: disk(swap area)에서 메모리로 데이터 가져옴
+		// page fault 나고 swap_in 실행 시 uninit_initializer가 실행됨
+		// uninit_initalizer에서 init에 있던 lazy_load_segment 호출되고, type에 맞는 initializer 호출됨
+		return swap_in(page, frame->kva);	
 	}
 	return false;
 }
+
+
 //-------project3-memory_management-end----------------
 
 /* Initialize new supplemental page table */
 void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 {					
 	//-------project3-memory_management-start--------------									   
-	// struct hash *page_table = malloc(sizeof(struct hash)); // page_table에 메모리 할당
 	hash_init(&spt->spt_hash, page_hash, page_less, NULL);	   // 해시테이블 초기화
 
-	// spt->spt_hash = page_table; // spt에 해당 page_table 연결
 	//-------project3-memory_management-end----------------
 }
 

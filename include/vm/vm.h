@@ -47,27 +47,27 @@ struct thread;
  * uninit_page, file_page, anon_page, and page cache (project4).
  * DO NOT REMOVE/MODIFY PREDEFINED MEMBER OF THIS STRUCTURE. */
 struct page {
-	
-	// 해당 operations는 page 구조체를 통해 언제든 요청 될 수 있게 되어있음.
+	// 해당 operations는 page 구조체를 통해 언제든 요청 될 수 있음
 	const struct page_operations *operations;
 
-	// 키가 되는 가상 주소
 	void *va;              /* Address in terms of user space */
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
-	/* --- Project 3: VM-SPT ---*/
 	//-------project3-memory_management-start--------------
-	struct hash_elem hash_elem; /*spt테이블에서 페이지를 찾기 위해서 hash_elem 필요함. 이 hash_elem을 타고 struct page 로 가서 메타데이터를 알 수가 있다.*/
-	
+
+	// spt에서 페이지를 찾기 위해서 hash_elem 필요함. 
+	// 이 hash_elem을 타고 struct page로 가서 메타데이터를 알 수 있음
+	struct hash_elem hash_elem; 
 	bool writable; // wrtie 가능한지 여부
+	bool in_loaded;	// ?????
+
 	//-------project3-memory_management-end----------------
 	
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union { 
 		// page initialization
-		//3가지 종류의 page가 있는 만큼 각각의 page 종류에 따라 다른 초기화가 필요
 
 		// page의 세 가지 종류
 		struct uninit_page uninit;
@@ -143,7 +143,6 @@ enum vm_type page_get_type (struct page *page);
 unsigned page_hash(const struct hash_elem *p_, void *aux UNUSED);
 bool page_less(const struct hash_elem *a_,
 			   const struct hash_elem *b_, void *aux UNUSED);
-struct page *
-page_lookup(const void *address);
+struct page *page_lookup(const void *address);
 
 #endif  /* VM_VM_H */

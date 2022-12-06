@@ -1,6 +1,7 @@
 #ifndef VM_ANON_H
 #define VM_ANON_H
 #include "vm/vm.h"
+#include "threads/vaddr.h"  //  추가
 struct page;
 enum vm_type;
 

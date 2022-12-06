@@ -19,6 +19,10 @@
         "file.h": "c",
         "filesys.h": "c",
         "stdlib.h": "c",
-        "hash.h": "c"
+        "vm.h": "c",
+        "hash.h": "c",
+        "malloc.h": "c",
+        "inspect.h": "c",
+        "uninit.h": "c"
     }
 }
