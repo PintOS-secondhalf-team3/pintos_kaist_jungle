@@ -322,19 +322,7 @@ vm_do_claim_page(struct page *page)
 	return false;
 }
 
-/* upage와 kpage를 연결한 정보를 페이지테이블(pml4)에 세팅함
-*/
-bool
-install_page(void *upage, void *kpage, bool writable)
-{
-	struct thread *t = thread_current();
 
-	/* Verify that there's not already a page at that virtual
-	 * address, then map our page there. */
-	// pml4_get_page: pml4에서 upage(vm)과 매핑된 kva(물리주소와 매핑)를 반환함, 매핑되지 않았다면 NULL반환
-	// pml4_set_page: page와 frame의 매핑정보를 pml4에 추가
-	return (pml4_get_page(t->pml4, upage) == NULL && pml4_set_page(t->pml4, upage, kpage, writable));
-}
 //-------project3-memory_management-end----------------
 
 /* Initialize new supplemental page table */
