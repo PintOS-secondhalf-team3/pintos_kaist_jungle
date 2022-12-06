@@ -47,10 +47,11 @@ struct page {
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
-
+	// --------------------project3 Anonymous Page start---------
 	struct hash_elem hash_elem;
-	
 	bool writable;
+	bool in_loaded;
+	// --------------------project3 Anonymous Page end---------
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union {
@@ -122,5 +123,10 @@ page_less (const struct hash_elem *a_,
 
 unsigned
 page_hash (const struct hash_elem *p_, void *aux UNUSED);
+
+// --------------------project3 Anonymous Page start---------
+struct page *
+page_lookup (const void *address);
+// --------------------project3 Anonymous Page end---------
 
 #endif  /* VM_VM_H */

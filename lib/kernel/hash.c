@@ -90,8 +90,8 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
    without inserting NEW. */
 struct hash_elem *
 hash_insert (struct hash *h, struct hash_elem *new) {
-	struct list *bucket = find_bucket (h, new);
-	struct hash_elem *old = find_elem (h, bucket, new);
+	struct list *bucket = find_bucket (h, new); //적절한 버켓을 찾는다.
+	struct hash_elem *old = find_elem (h, bucket, new);// 인자로 준 해시에서 해당 해쉬엘렘을 찾고 찾으면 해당 해시엘렘 반환, 못 찾으면 null포인터 반환.
 
 	if (old == NULL)
 		insert_elem (h, bucket, new);
@@ -334,10 +334,10 @@ rehash (struct hash *h) {
 	   We want one bucket for about every BEST_ELEMS_PER_BUCKET.
 	   We must have at least four buckets, and the number of
 	   buckets must be a power of 2. */
-	new_bucket_cnt = h->elem_cnt / BEST_ELEMS_PER_BUCKET;
+	new_bucket_cnt = h->elem_cnt / BEST_ELEMS_PER_BUCKET;  //elem의 절반 개수
 	if (new_bucket_cnt < 4)
 		new_bucket_cnt = 4;
-	while (!is_power_of_2 (new_bucket_cnt))
+	while (!is_power_of_2 (new_bucket_cnt))   // elem개수 15개 bucket개수 4, 16일때 8 ,32일때 16 
 		new_bucket_cnt = turn_off_least_1bit (new_bucket_cnt);
 
 	/* Don't do anything if the bucket count wouldn't change. */

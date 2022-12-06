@@ -12,4 +12,16 @@ void process_exit (void);
 void process_activate (struct thread *next);
 void argument_stack(char **argv, int argc, struct intr_frame *if_);
 
+//--------------------project3 Anonymous Page start---------
+static bool
+load_segment(struct file *file, off_t ofs, uint8_t *upage,
+			 uint32_t read_bytes, uint32_t zero_bytes, bool writable);
+
+struct container{
+    struct file *file;
+    off_t offset;
+    size_t page_read_bytes;
+};
+//--------------------project3 Anonymous Page end---------
+
 #endif /* userprog/process.h */

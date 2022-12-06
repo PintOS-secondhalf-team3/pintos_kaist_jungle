@@ -5,6 +5,8 @@
 #include "vm/inspect.h"
 #include "lib/kernel/hash.h"
 #include "userprog/process.h"
+#include "threads/vaddr.h"
+
 //#include "lib/kernel/list.h"
 
 struct list frame_table;
@@ -67,20 +69,13 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 
 		switch (VM_TYPE(type))
 		{
-		
-		case VM_ANON:
-			initializer = anon_initializer;
-			break;
-		
-		case VM_FILE:
-			initializer = file_backed_initializer;
-			break;
-		
-		//case VM_PAGE_CACHE:
-			//initializer = page_cache_initializer;
-			//break;
-		default:
-			break;
+			case VM_ANON:
+				initializer = anon_initializer;
+				break;
+			
+			case VM_FILE:
+				initializer = file_backed_initializer;
+				break;
 		}
 		uninit_new(page, upage, init, type, aux, initializer);
 		page->writable = writable;
@@ -108,11 +103,11 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 
 struct page *
 page_lookup (const void *address) {
-  struct page p;
+  struct page* p = (struct page*)malloc(sizeof(struct page)); // Anonymous Page---------수정 12/06
   struct hash_elem *e;
 
-  p.va = address;
-  e = hash_find (&thread_current()->spt.spt_hash , &p.hash_elem);
+  p->va = pg_round_down(address);
+  e = hash_find (&thread_current()->spt.spt_hash , &p->hash_elem);
   return e != NULL ? hash_entry (e, struct page, hash_elem) : NULL;
 }
 /* Insert PAGE into spt with validation. */
@@ -158,18 +153,21 @@ vm_evict_frame (void) {
  * space.*/
 static struct frame *
 vm_get_frame (void) {
-	struct frame *frame = (struct frame*)malloc(sizeof(struct frame*));
+	struct frame *frame = (struct frame*)malloc(sizeof(struct frame));
 	/* TODO: Fill this function. */
-	ASSERT (frame != NULL);
-	ASSERT (frame->page == NULL);
 	frame->kva = palloc_get_page(PAL_USER);
 	if (frame->kva ==NULL){
-		ASSERT (frame->page == NULL);
+		PANIC("todo");
 		//frame = vm_evict_frame();
 		//frame->page = NULL;
 		//return frame;
 	}
 	list_push_back(&frame_table,&frame->frame_elem);
+
+	frame->page = NULL;
+
+	ASSERT (frame != NULL);
+	ASSERT (frame->page == NULL);
 	return frame;
 }
 
@@ -192,7 +190,26 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 
-	return vm_do_claim_page (page);
+	// --------------------project3 Anonymous Page start---------
+	if (is_kernel_vaddr(addr)) {
+        return false;
+	}
+
+    void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
+    if (not_present){
+        if (!vm_claim_page(addr)) {
+            if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) {
+                vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+                return true;
+            }
+            return false;
+        }
+        else
+            return true;
+    }
+    return false;
+	// --------------------project3 Anonymous Page end---------
+	// return vm_do_claim_page (page);  //기존 코드
 }
 
 /* Free the page.
@@ -217,6 +234,7 @@ vm_claim_page (void *va UNUSED) {
 }
 
 /* Claim the PAGE and set up the mmu. */
+// 가상 주소와 물리 주소 매핑(성공, 실패 여부 리턴)
 static bool
 vm_do_claim_page (struct page *page) {
 	struct frame *frame = vm_get_frame ();
@@ -234,7 +252,7 @@ vm_do_claim_page (struct page *page) {
 /* Initialize new supplemental page table */
 void
 supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
-	hash_init(spt ,page_hash ,page_less , NULL);
+	hash_init(&spt->spt_hash ,page_hash ,page_less , NULL);
 }
 
 /* Copy supplemental page table from src to dst */
