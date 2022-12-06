@@ -475,9 +475,9 @@ struct ELF64_PHDR
 
 static bool setup_stack(struct intr_frame *if_);
 static bool validate_segment(const struct Phdr *, struct file *);
-static bool ment(struct file *file, off_t ofs, uint8_t *upage,
-						 uint32_t read_bytes, uint32_t zero_bytes,
-						 bool writable);
+// static bool load_segment(struct file *file, off_t ofs, uint8_t *upage, //------------------------수정
+// 						 uint32_t read_bytes, uint32_t zero_bytes,
+// 						 bool writable);
 
 // (arg_list, token_count, if_)
 void argument_stack(char **argv, int argc, struct intr_frame *if_)
