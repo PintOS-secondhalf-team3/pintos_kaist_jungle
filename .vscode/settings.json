@@ -18,6 +18,7 @@
         "main.h": "c",
         "file.h": "c",
         "filesys.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "exception.h": "c"
     }
 }
