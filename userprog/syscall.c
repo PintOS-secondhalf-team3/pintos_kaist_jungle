@@ -11,6 +11,7 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "userprog/process.h"
+#include "vm/vm.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -72,8 +73,13 @@ void check_address(void *addr)
 	/* 1. 포인터가 가리키는 주소가 유저영역의 주소인지 확인 */
 	/* 2. 포인터가 가리키는 주소가 존재하는지 확인 */
 	/* 3. 포인터가 가리키는 주소에 해당하는 실주소가 없는 경우 NULL 반환 */
-	// || pml4_get_page(cur->pml4, addr) == NULL
+	/*
 	if (!is_user_vaddr(addr) || addr == NULL || pml4_get_page(cur->pml4, addr) == NULL)
+	{
+		exit(-1);
+	}
+	*/
+	if (!is_user_vaddr(addr) || addr == NULL || spt_find_page(&cur->spt, addr) == NULL)
 	{
 		exit(-1);
 	}
