@@ -8,6 +8,7 @@
 #include "hash.h"
 #include "../debug.h"
 #include "threads/malloc.h"
+#include "vm/vm.h"
 
 #define list_elem_to_hash_elem(LIST_ELEM)                       \
 	list_entry(LIST_ELEM, struct hash_elem, list_elem)
@@ -82,6 +83,11 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
 	if (destructor != NULL)
 		hash_clear (h, destructor);
 	free (h->buckets);
+}
+
+void hash_destructor(struct hash_elem *e, void* aux) {
+	struct page *free_page = hash_entry(e, struct page, hash_elem);
+	free(free_page);
 }
 
 /* Inserts NEW into hash table H and returns a null pointer, if

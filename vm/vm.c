@@ -259,13 +259,57 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 		struct supplemental_page_table *src UNUSED) {
+		/**/
+		//----------------------------project3 anonymous page start-----------
+		//spt를 src에서 dst로 복붙한다.
+		
+		//해시테이블 순회하기
+		struct hash_iterator i;
+		hash_first(&i, &src->spt_hash);
+		while (hash_next(&i)) // src의 모든 페이지를 dst로 복붙.
+		{
+			// 해시테이블의 elem에서 page 받아옴.
+			struct page* parent_page = hash_entry(hash_cur(&i), struct page, hash_elem);// 부모페이지
+			enum vm_type parent_type = page_get_type(parent_page);	// 부모페이지의 type
+			void* upage = parent_page->va;  // 부모페이지의 va
+			bool writable = parent_page->writable;
+			vm_initializer *init = parent_page->uninit.init; // 부모의 init함수
+			void* aux = parent_page->uninit.aux; 
+			
+			
+			if (parent_page->operations->type == VM_UNINIT) {	// 부모 type이 uninit인 경우
+				if(!vm_alloc_page_with_initializer(parent_type, upage, writable, init, aux)) {
+					return false;
+				}
+			}
+			else {	// 부모 type이 uninit이 아닌 경우
+				if(!vm_alloc_page(parent_type, upage, writable)) {
+					return false;
+				}
+				if(!vm_claim_page(upage)) {
+					return false;
+				}
+
+				// 부모의 것을 child에 memcpy한다. 
+				struct page* child_page = spt_find_page(dst, upage);
+				memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
+			}
+		}
+		return true;
+		
+		//----------------------------project3 anonymous page end-----------
 }
 
 /* Free the resource hold by the supplemental page table */
+
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	//----------------------------project3 anonymous page start-----------
+	hash_destroy(&spt->spt_hash, hash_destructor);
+	//----------------------------project3 anonymous page end-----------
+
 }
 
 /* Returns true if page a precedes page b. */
