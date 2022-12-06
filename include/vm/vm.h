@@ -110,7 +110,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table { // page fault가 발생 -> 이런 상황 해결 -> page table보다 더 많은 정보를 담은 page table인 spt.
-	struct hash* spt_hash; // hash 자료구조 방식의 spt임
+	struct hash spt_hash; // hash 자료구조 방식의 spt임
 };
 
 #include "threads/thread.h"

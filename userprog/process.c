@@ -885,7 +885,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		container->offset = ofs;
 		// void *aux = NULL:
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, container))
+											writable, lazy_load_segment, container)) {
 			// vm_alloc_page_with_initializer: spt에 앞으로 사용할 page들(aux에 있음)을 추가해준다.
 			// vm_alloc_page_with_initializer의 5번째 인자인 aux는 load_segment에 설정한 정보
 			// 이 정보를 사용하여 세그먼트를 읽을 파일을 찾고 결국 세그먼트를 메모리로 읽어야 함

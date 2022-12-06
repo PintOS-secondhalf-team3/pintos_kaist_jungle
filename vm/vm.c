@@ -201,11 +201,19 @@ vm_evict_frame(void)
 		// 만약 가용 가능한 페이지가 없다면 페이지를 스왑하고 frame 공간을 디스크로 내린다.
 */
 static struct frame *
-vm_get_frame(void) 
-{
 vm_get_frame (void) {
 	struct frame *frame = (struct frame*)malloc(sizeof(struct frame));
 	/* TODO: Fill this function. */
+	frame->kva = palloc_get_page(PAL_USER);
+	if (frame->kva ==NULL){
+		PANIC("todo");
+		//frame = vm_evict_frame();
+		//frame->page = NULL;
+		//return frame;
+	}
+	list_push_back(&frame_table,&frame->frame_elem);
+
+	frame->page = NULL;
 
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
@@ -228,8 +236,8 @@ vm_handle_wp(struct page *page UNUSED)
 /* Return true on success */
 // page fault는 user program이 진행되면서 program이 물리 메모리에 있을거라고 생각하면서
 // 접근 하는데 실제로는 원하는 데이터가 물리 메모리에 load 혹은 저장되어있지 않을 경우 발생함
-bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
-{ 	
+bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, 
+					bool user UNUSED, bool write UNUSED, bool not_present UNUSED) { 	
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
@@ -250,13 +258,14 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
             }
             return false;
         }
-        else
+        else {
             return true;
+		}
     }
     return false;
 	// --------------------project3 Anonymous Page end----------
 
-	return vm_do_claim_page(page);
+	// return vm_do_claim_page(page);
 }
 
 /* Free the page.
