@@ -4,11 +4,6 @@
 #include "threads/palloc.h"
 #include "lib/kernel/hash.h"
 
-bool page_less(const struct hash_elem *a_,
-			   const struct hash_elem *b_, void *aux UNUSED);
-			   unsigned
-bool page_hash(const struct hash_elem *p_, void *aux UNUSED);
-
 enum vm_type {
 	/* page not initialized */
 	VM_UNINIT = 0,
@@ -113,8 +108,8 @@ struct page_operations {
 /* Representation of current process's memory space.
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
-struct supplemental_page_table { // page fault가 발생 -> 이런 상황 해결 -> page table보다 더 많은 정보를 담은 page table인 spt.
-	struct hash* spt_hash; // hash 자료구조 방식의 spt임
+struct supplemental_page_table {
+	struct hash spt_hash;
 };
 
 #include "threads/thread.h"
@@ -139,10 +134,16 @@ void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 
-// 추가한 함수
-unsigned page_hash(const struct hash_elem *p_, void *aux UNUSED);
-bool page_less(const struct hash_elem *a_,
-			   const struct hash_elem *b_, void *aux UNUSED);
-struct page *page_lookup(const void *address);
+bool
+page_less (const struct hash_elem *a_,
+           const struct hash_elem *b_, void *aux UNUSED);
+
+unsigned
+page_hash (const struct hash_elem *p_, void *aux UNUSED);
+
+// --------------------project3 Anonymous Page start---------
+struct page *
+page_lookup (const void *address);
+// --------------------project3 Anonymous Page end---------
 
 #endif  /* VM_VM_H */
