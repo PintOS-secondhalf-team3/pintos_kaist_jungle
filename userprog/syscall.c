@@ -91,8 +91,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 {
 	/* 유저 스택에 저장되어 있는 시스템 콜 넘버를 이용해 시스템 콜 핸들러 구현 */
 	int sys_num = f->R.rax;
+
+	// 스레드 구조체에 유저모드(interrupt frame에 있음)의 rsp를 저장함
+	thread_current()->rsp_stack = f->rsp;	
+
 	// check_address(sys_num);  /* 스택 포인터가 유저 영역인지 확인 */
-	// printf("===========syscall_handler 안========%d=======\n", sys_num);
 
 	switch (sys_num)
 	{

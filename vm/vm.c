@@ -221,6 +221,14 @@ vm_get_frame (void) {
 static void
 vm_stack_growth(void *addr UNUSED)
 {
+	void* stack_va = pg_round_down(addr);
+	void* stack_bottom = thread_current()->stack_bottom;
+	
+	// 페이지 할당받기 
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_va, 1)) {    // type, upage, writable
+		vm_claim_page(stack_va);	// 페이지 claim
+		thread_current()->stack_bottom -= PGSIZE;
+    }
 }
 
 /* Handle the fault on write_protected page */
@@ -244,11 +252,13 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
 	if (is_kernel_vaddr(addr)) {
         return false;
 	}
-
+	// 커널이면 thread구조체의 rsp_stack을, 유저면 interrupt frame의 rsp를 사용함
     void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
     if (not_present){
-        if (!vm_claim_page(addr)) {
-            if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) {
+        if (!vm_claim_page(addr)) {	// page를 새로 할당받지 못하는 경우 진입
+
+			// 유저 스택영역에 접근하는 경우임, 참고: 0x100000 = 2^20 = 1MB 
+            if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) { 
                 vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
                 return true;
             }
@@ -274,7 +284,9 @@ void vm_dealloc_page(struct page *page)
 //-------project3-memory_management-start--------------
 
 /* Claim the page that allocate on VA. */
-/* 할당할 페이지를 요청함.					*/
+/* va에 해당하는 page를 가져온 뒤, vm_do_claim_page()를 호출하여 
+   물리 frame을 새로 할당받고 이를 page와 연결함. 또한, page table entry에 해당 정보를 매핑함
+*/
 bool vm_claim_page(void *va UNUSED)
 { 
 	struct page *page = NULL;
@@ -285,7 +297,6 @@ bool vm_claim_page(void *va UNUSED)
 	if (page == NULL) {
 		return false;
 	}
-
 
 	// 물리 frame을 새로 할당받고 이를 인자로 넘겨준 page와 연결함, 또한 page table entry에 해당 정보를 매핑함
 	return vm_do_claim_page(page); 
@@ -330,15 +341,13 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 }
 
 /* Copy supplemental page table from src to dst */
+/* src spt를 dst spt에 복사한다.*/
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct supplemental_page_table *src UNUSED) {
 		//----------------------------project3 anonymous page start-----------
-		//spt를 src에서 dst로 복붙한다.
-		
-		//해시테이블 순회하기
 		struct hash_iterator i;
 		hash_first(&i, &src->spt_hash);
-		while (hash_next(&i)) // src의 모든 페이지를 dst로 복붙.
+		while (hash_next(&i)) // 해시테이블을 순회하며 src의 모든 페이지를 dst로 복붙.
 		{
 			// 해시테이블의 elem에서 page 받아옴.
 			struct page* parent_page = hash_entry(hash_cur(&i), struct page, hash_elem);// 부모페이지
@@ -346,7 +355,7 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct
 			void* upage = parent_page->va;  // 부모페이지의 va
 			bool writable = parent_page->writable;
 			vm_initializer *init = parent_page->uninit.init; // 부모의 init함수
-			void* aux = parent_page->uninit.aux; 
+			void* aux = parent_page->uninit.aux;	// load segment로부터 전달받은 container
 			
 			if (parent_page->operations->type == VM_UNINIT) {	// 부모 type이 uninit인 경우
 				if(!vm_alloc_page_with_initializer(parent_type, upage, writable, init, aux)) {
@@ -357,11 +366,11 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct
 				if(!vm_alloc_page(parent_type, upage, writable)) {
 					return false;
 				}
-				if(!vm_claim_page(upage)) {
+				if(!vm_claim_page(upage)) {	// upage에 해당하는 frame을 할당받는다.
 					return false;
 				}
 
-				// 부모의 것을 child에 memcpy한다. 
+				// 부모 page의 것을 자식 page에 memcpy한다. 
 				struct page* child_page = spt_find_page(dst, upage);
 				memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
 			}
@@ -371,7 +380,6 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct
 }
 
 /* Free the resource hold by the supplemental page table */
-
 void
 supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
