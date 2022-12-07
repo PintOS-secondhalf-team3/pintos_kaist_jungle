@@ -292,11 +292,12 @@ int process_exec(void *f_name)
 
 	/* We first kill the current context */
 	process_cleanup(); // 새로운 실행 파일을 현재 스레드에 담기 전에 현재 process에 담긴 context 삭제
-	// hash table까지 다 없애주기 때문에
+	
+	// process_cleanup()에서 hash table까지 다 없애주기 때문에 다시 hash table init을 실행해야 함
+	supplemental_page_table_init(&thread_current()->spt);
 
-	supplemental_page_table_init(&thread_current()->spt);	// 여기서 hash table을 다시 만들어줘야 함
-
-	// memset(&_if, 0, sizeof(_if)); // 필요하지 않은 레지스터까지 0으로 바꿔 "#GP General Protection Exception"; 오류 발생
+	// 필요하지 않은 레지스터까지 0으로 바꿔 "#GP General Protection Exception"; 오류 발생
+	// memset(&_if, 0, sizeof(_if)); 
 
 	/* And then load the binary */
 	success = load(file_name, &_if); // f_name, if_.rip (function entry point), rsp(stack top : user stack)
@@ -925,7 +926,6 @@ setup_stack(struct intr_frame *if_)
 	//vm_alloc_page를 통한 페이지 할당
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {    // type, upage, writable
 		success = vm_claim_page(stack_bottom);
-		
 		if (success) {
 			if_->rsp = USER_STACK;
             thread_current()->stack_bottom = stack_bottom;

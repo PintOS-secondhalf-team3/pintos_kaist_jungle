@@ -51,8 +51,9 @@ hash_init (struct hash *h,
    functions hash_clear(), hash_destroy(), hash_insert(),
    hash_replace(), or hash_delete(), yields undefined behavior,
    whether done in DESTRUCTOR or elsewhere. */
+// hash에서 모든 elem 제거 ( 반드시 이 hash는 hash_init()을 거쳤어야 함)
 void
-hash_clear (struct hash *h, hash_action_func *destructor) { // hash에서 모든 elem 제거 ( 반드시 이 hash는 hash_init()을 거쳤어야 함)
+hash_clear (struct hash *h, hash_action_func *destructor) { 
 	size_t i;
 
 	for (i = 0; i < h->bucket_cnt; i++) {
@@ -81,7 +82,8 @@ hash_clear (struct hash *h, hash_action_func *destructor) { // hash에서 모든
    hash_insert(), hash_replace(), or hash_delete(), yields
    undefined behavior, whether done in DESTRUCTOR or
    elsewhere. */
-// 인자 action이 존재한다면, hash안의 각 elem마다 호출한다. hash_clear와 다른 점은, hash 자체를 free시킨다는 점이다.
+/* 인자 action이 존재한다면, hash안의 각 elem마다 action을 호출한다. hash_clear와 다른 점은, hash 자체를 free시킨다는 점이다.
+*/
 void
 hash_destroy (struct hash *h, hash_action_func *destructor) {
 	if (destructor != NULL)
@@ -89,6 +91,8 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
 	free (h->buckets);
 }
 
+/* hash_destructor: hash_destroy의 action func로 인자로 받은 page를 destroy하고, free시킨다.
+*/
 void hash_destructor(struct hash_elem *e, void* aux) {
 	struct page *free_page = hash_entry(e, struct page, hash_elem);
 	vm_dealloc_page(free_page);	// destroy & free
