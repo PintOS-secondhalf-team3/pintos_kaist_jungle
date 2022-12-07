@@ -34,6 +34,7 @@ int filesize(int fd);
 int read(int fd, void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 
 struct lock filesys_lock;
 
@@ -99,55 +100,59 @@ void syscall_handler(struct intr_frame *f UNUSED)
 
 	switch (sys_num)
 	{
-	case SYS_HALT:
-		halt();
-		break;
-	case SYS_EXIT:
-		exit(f->R.rdi);
-		break;
-	case SYS_CREATE:
-		f->R.rax = create(f->R.rdi, f->R.rsi);
-		break;
-	case SYS_REMOVE:
-		f->R.rax = remove(f->R.rdi);
-		break;
-	case SYS_WRITE:
-		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	case SYS_WAIT:
-		f->R.rax = wait(f->R.rdi);
-		break;
-	case SYS_FORK:
-		f->R.rax = fork(f->R.rdi, f);
-		break;
-	case SYS_EXEC:
-		if (exec(f->R.rdi) == -1)
-		{
-			exit(-1);
-		}
-		break;
-	case SYS_OPEN:
-		f->R.rax = open(f->R.rdi);
-		break;
-	case SYS_CLOSE:
-		close(f->R.rdi);
-		break;
-	case SYS_FILESIZE:
-		f->R.rax = filesize(f->R.rdi);
-		break;
-	case SYS_READ:
-		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	case SYS_SEEK:
-		seek(f->R.rdi, f->R.rsi);
-		break;
-	case SYS_TELL:
-		f->R.rax = tell(f->R.rdi);
-		break;
-	default:
-		// exit(-1);
-		// break;
-		thread_exit();
+		case SYS_HALT:
+			halt();
+			break;
+		case SYS_EXIT:
+			exit(f->R.rdi);
+			break;
+		case SYS_CREATE:
+			f->R.rax = create(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_REMOVE:
+			f->R.rax = remove(f->R.rdi);
+			break;
+		case SYS_WRITE:
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_WAIT:
+			f->R.rax = wait(f->R.rdi);
+			break;
+		case SYS_FORK:
+			f->R.rax = fork(f->R.rdi, f);
+			break;
+		case SYS_EXEC:
+			if (exec(f->R.rdi) == -1){
+				exit(-1);
+			}
+			break;
+		case SYS_OPEN:
+			f->R.rax = open(f->R.rdi);
+			break;
+		case SYS_CLOSE:
+			close(f->R.rdi);
+			break;
+		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
+			break;
+		case SYS_READ:
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_TELL:
+			f->R.rax = tell(f->R.rdi);
+			break;
+		// --------------------project3 Memory Mapped Files start---------
+		case SYS_MMAP:
+			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+			break;
+		// --------------------project3 Memory Mapped Files end-----------
+		default:
+			// exit(-1);
+			// break;
+			thread_exit();
 	}
 }
 
@@ -407,4 +412,34 @@ tell(int fd)
 		return;
 	}
 	return file_tell(file);
+}
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+
+	// 1. 파일 내용을 읽는 위치(커서)(offset)가 page-align되어야 함 -> struct file의 pos멤버
+	if (offset % PGSIZE != 0) {
+		return NULL;
+	}
+
+	// 2. 가상 유저 page 시작 주소(addr)가 page-align되어야 함, addr이 유저영역이어야 함, addr이 NULL이 아니어야 함, length가 0보다 커야 함
+	if ( (pg_round_down(addr) != addr) || is_kernel_vaddr(addr) || addr == NULL || length <= 0 ) {
+		return NULL;
+	}
+
+	// 3. fd가 콘솔 입출력(STDIN/STDOUT)이 아니어야 함
+	if (fd == 0 || fd == 1) {
+		exit(-1);
+	}
+
+	// 4. 매핑하려는 페이지가 이미 spt에 존재하는 페이지이면 안됨
+	if (spt_find_page(&thread_current()->spt, addr)) {
+		return NULL;
+	}
+
+	struct file *target = thread_current()->fd_table[fd];
+	if (target == NULL) {
+		return NULL;
+	}
+
+	return do_mmap(addr, length, writable, target, offset);
 }
