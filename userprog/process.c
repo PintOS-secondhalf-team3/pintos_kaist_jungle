@@ -277,7 +277,7 @@ int process_exec(void *f_name)
 
 	/* We first kill the current context */
 	process_cleanup(); // 새로운 실행 파일을 현재 스레드에 담기 전에 현재 process에 담긴 context 삭제
-
+	supplemental_page_table_init(&thread_current()->spt);
 	// memset(&_if, 0, sizeof(_if)); // 필요하지 않은 레지스터까지 0으로 바꿔 "#GP General Protection Exception"; 오류 발생
 
 	/* And then load the binary */
