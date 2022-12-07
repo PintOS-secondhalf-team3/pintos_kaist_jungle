@@ -114,15 +114,7 @@ spt_find_page(struct supplemental_page_table *spt UNUSED, void *va UNUSED)
 	struct page *page = page_lookup(va); 
 	//-------project3-memory_management-end----------------
 	
-	
 	return page;
-	// struct page *temp_page;
-	// temp_page->va = va;
-	
-	// struct hash_elem* hash_elem = hash_find(&spt->spt_hash, &temp_page->hash_elem);
-	// /* TODO: Fill this function. */
-	// struct page* page = hash_entry(hash_elem, struct page, hash_elem);
-	// return page;
 }
 
 //-------project3-memory_management-start--------------
@@ -201,22 +193,7 @@ vm_evict_frame(void)
 		// 만약 가용 가능한 페이지가 없다면 페이지를 스왑하고 frame 공간을 디스크로 내린다.
 */
 static struct frame *
-vm_get_frame(void) 
-{
 vm_get_frame (void) {
-	struct frame *frame = (struct frame*)malloc(sizeof(struct frame));
-	/* TODO: Fill this function. */
-	frame->kva = palloc_get_page(PAL_USER);
-	if (frame->kva ==NULL){
-		PANIC("todo");
-		//frame = vm_evict_frame();
-		//frame->page = NULL;
-		//return frame;
-	}
-	list_push_back(&frame_table,&frame->frame_elem);
-
-	frame->page = NULL;
-
 	// 새로운 frame 만들기
 	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
 
@@ -341,19 +318,6 @@ vm_do_claim_page(struct page *page)
 	return false;
 }
 
-/* upage와 kpage를 연결한 정보를 페이지테이블(pml4)에 세팅함
-*/
-bool
-install_page(void *upage, void *kpage, bool writable)
-{
-	struct thread *t = thread_current();
-
-	/* Verify that there's not already a page at that virtual
-	 * address, then map our page there. */
-	// pml4_get_page: pml4에서 upage(vm)과 매핑된 kva(물리주소와 매핑)를 반환함, 매핑되지 않았다면 NULL반환
-	// pml4_set_page: page와 frame의 매핑정보를 pml4에 추가
-	return (pml4_get_page(t->pml4, upage) == NULL && pml4_set_page(t->pml4, upage, kpage, writable));
-}
 //-------project3-memory_management-end----------------
 
 /* Initialize new supplemental page table */
@@ -367,9 +331,7 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 
 /* Copy supplemental page table from src to dst */
 bool
-supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
-		struct supplemental_page_table *src UNUSED) {
-		/**/
+supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct supplemental_page_table *src UNUSED) {
 		//----------------------------project3 anonymous page start-----------
 		//spt를 src에서 dst로 복붙한다.
 		
@@ -385,7 +347,6 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 			bool writable = parent_page->writable;
 			vm_initializer *init = parent_page->uninit.init; // 부모의 init함수
 			void* aux = parent_page->uninit.aux; 
-			
 			
 			if (parent_page->operations->type == VM_UNINIT) {	// 부모 type이 uninit인 경우
 				if(!vm_alloc_page_with_initializer(parent_type, upage, writable, init, aux)) {
@@ -406,7 +367,6 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
 			}
 		}
 		return true;
-		
 		//----------------------------project3 anonymous page end-----------
 }
 
@@ -420,16 +380,6 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	hash_destroy(&spt->spt_hash, hash_destructor);
 	//----------------------------project3 anonymous page end-----------
 
-}
-
-/* Returns true if page a precedes page b. */
-bool
-page_less (const struct hash_elem *a_,
-           const struct hash_elem *b_, void *aux UNUSED) {
-  const struct page *a = hash_entry (a_, struct page, hash_elem);
-  const struct page *b = hash_entry (b_, struct page, hash_elem);
-
-  return a->va < b->va;
 }
 
 /* Returns a hash value for page p. */
