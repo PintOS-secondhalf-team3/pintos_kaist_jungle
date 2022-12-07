@@ -21,6 +21,9 @@
 #include "include/vm/file.h"
 #ifdef VM
 #include "vm/vm.h"
+// --------------------project3 Anonymous Page start---------
+#include "vm/file.h"
+// --------------------project3 Anonymous Page end---------
 #endif
 
 static void process_cleanup(void);
@@ -289,6 +292,9 @@ int process_exec(void *f_name)
 
 	/* We first kill the current context */
 	process_cleanup(); // 새로운 실행 파일을 현재 스레드에 담기 전에 현재 process에 담긴 context 삭제
+	// hash table까지 다 없애주기 때문에
+
+	supplemental_page_table_init(&thread_current()->spt);	// 여기서 hash table을 다시 만들어줘야 함
 
 	// memset(&_if, 0, sizeof(_if)); // 필요하지 않은 레지스터까지 0으로 바꿔 "#GP General Protection Exception"; 오류 발생
 
@@ -400,7 +406,10 @@ process_cleanup(void)
 	struct thread *curr = thread_current();
 
 #ifdef VM
-	supplemental_page_table_kill(&curr->spt);
+	// supplemental_page_table_kill(&curr->spt);
+	if(!hash_empty(&curr->spt.spt_hash)) {
+		supplemental_page_table_kill(&curr->spt);
+	}
 #endif
 
 	uint64_t *pml4;
@@ -868,8 +877,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT(pg_ofs(upage) == 0);
 	ASSERT(ofs % PGSIZE == 0);
 
-	while (read_bytes > 0 || zero_bytes > 0)
-	{
+	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
@@ -883,24 +891,23 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		container->offset = ofs;
 		// void *aux = NULL:
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, container))
+											writable, lazy_load_segment, container)) {
 			// vm_alloc_page_with_initializer: spt에 앞으로 사용할 page들(aux에 있음)을 추가해준다.
 			// vm_alloc_page_with_initializer의 5번째 인자인 aux는 load_segment에 설정한 정보
 			// 이 정보를 사용하여 세그먼트를 읽을 파일을 찾고 결국 세그먼트를 메모리로 읽어야 함
 			return false;
+		}
 
-		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
 		ofs += page_read_bytes;	// 추가
 	}
 	return true;
-	//-------project3-memory_management-end----------------
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-static bool
+bool  // 기존 앞에 static 붙어있었음.
 setup_stack(struct intr_frame *if_)
 {	
 	// 스택을 식별하는 방법을 제공해야 할 수도 있음
@@ -939,6 +946,8 @@ setup_stack(struct intr_frame *if_)
  * with palloc_get_page().
  * Returns true on success, false if UPAGE is already mapped or
  * if memory allocation fails. */
+/* upage와 kpage를 연결한 정보를 페이지테이블(pml4)에 세팅함
+*/
 bool
 install_page(void *upage, void *kpage, bool writable)
 {
