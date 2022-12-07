@@ -32,7 +32,7 @@ void debug_backtrace (void);
 		PANIC ("assertion `%s' failed.", #CONDITION);   \
 	}
 #define NOT_REACHED() PANIC ("executed an unreachable statement");
-#elseㄴ
+#else
 #define ASSERT(CONDITION) ((void) 0)
 #define NOT_REACHED() for (;;)
 #endif /* lib/debug.h */

@@ -93,6 +93,9 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	int sys_num = f->R.rax;
 	// check_address(sys_num);  /* 스택 포인터가 유저 영역인지 확인 */
 	// printf("===========syscall_handler 안========%d=======\n", sys_num);
+	
+	// 스레드 구조체에 유저모드의 rsp를 저장
+	thread_current()->rsp_stack = f->rsp;  
 
 	switch (sys_num)
 	{

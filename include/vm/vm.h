@@ -42,21 +42,36 @@ struct thread;
  * uninit_page, file_page, anon_page, and page cache (project4).
  * DO NOT REMOVE/MODIFY PREDEFINED MEMBER OF THIS STRUCTURE. */
 struct page {
+	// 해당 operations는 page 구조체를 통해 언제든 요청 될 수 있음
 	const struct page_operations *operations;
+
 	void *va;              /* Address in terms of user space */
 	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
-	// --------------------project3 Anonymous Page start---------
-	struct hash_elem hash_elem;
-	bool writable;
-	bool in_loaded;
-	// --------------------project3 Anonymous Page end---------
+	//-------project3-memory_management-start--------------
+
+	// spt에서 페이지를 찾기 위해서 hash_elem 필요함. 
+	// 이 hash_elem을 타고 struct page로 가서 메타데이터를 알 수 있음
+	struct hash_elem hash_elem; 
+	bool writable; // wrtie 가능한지 여부
+	bool in_loaded;	// ?????
+
+	//-------project3-memory_management-end----------------
+	
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
-	union {
+	union { 
+		// page initialization
+
+		// page의 세 가지 종류
 		struct uninit_page uninit;
+
+		// 파일에 기반하고 있지 않은(파일로부터 매핑되지 않은) 페이지
+		// 커널로부터 프로세스에게 할당된 일반적인 메모리 페이지
 		struct anon_page anon;
+
+		// 파일으로부터 매핑된 페이지
 		struct file_page file;
 #ifdef EFILESYS
 		struct page_cache page_cache;
@@ -65,10 +80,11 @@ struct page {
 };
 
 /* The representation of "frame" */
+// 물리적 메모리를 나타냄
 struct frame {
-	void *kva;
-	struct page *page;
-	struct list_elem frame_elem;
+	void *kva; // 커널 가상 주소: 물리메모리 프레임이랑 일대일로 매핑되어 있는 가상 주소
+	struct page *page; // 페이지 구조
+	struct list_elem frame_elem; // 
 };
 
 /* The function table for page operations.
@@ -76,13 +92,14 @@ struct frame {
  * Put the table of "method" into the struct's member, and
  * call it whenever you needed. */
 struct page_operations {
+	// 각 페이지가 수행해야 할 수 있는 작업들이 function pointer 형태로 저장
 	bool (*swap_in) (struct page *, void *);
 	bool (*swap_out) (struct page *);
 	void (*destroy) (struct page *);
 	enum vm_type type;
 };
 
-// 이부분 질문
+// 
 #define swap_in(page, v) (page)->operations->swap_in ((page), v)
 #define swap_out(page) (page)->operations->swap_out (page)
 #define destroy(page) \
