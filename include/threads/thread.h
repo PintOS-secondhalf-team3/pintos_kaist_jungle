@@ -118,6 +118,7 @@ struct thread
 	// --------------------project3 Anonymous Page start---------
 	void* stack_bottom;
 	void* rsp_stack;
+	void* mmap_addr;	// munmap 확인용
 	// --------------------project3 Anonymous Page end---------
 #endif
 

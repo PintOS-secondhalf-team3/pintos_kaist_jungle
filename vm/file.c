@@ -88,7 +88,6 @@ do_mmap(void *addr, size_t length, int writable,
 	/* 파일을 페이지 단위로 잘라 해당 파일의 정보들을 container 구조체에 저장한다.
 	   FILE-BACKED 타입의 UINIT 페이지를 만들어 lazy_load_segment()를 vm_init으로 넣는다. */
 	while(read_bytes > 0 || zero_bytes > 0) {
-
 		// page_read_bytes만큼 잘라서 읽는다. 
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;	
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -101,7 +100,7 @@ do_mmap(void *addr, size_t length, int writable,
 
 		if (!vm_alloc_page_with_initializer(VM_FILE, addr,
 											writable, lazy_load_segment, container)) {
-			return false;
+			return NULL;
 		}
 		
 		// 읽은 만큼 읽기정보 업데이트
@@ -110,7 +109,7 @@ do_mmap(void *addr, size_t length, int writable,
 		addr += PGSIZE;
 		offset += page_read_bytes;
 	}
-
+	thread_current()->mmap_addr = start_addr;	// munmap 확인용
 	return start_addr;	// 시작 주소를 반환
 }
 
@@ -121,38 +120,40 @@ do_mmap(void *addr, size_t length, int writable,
 */
 void do_munmap(void *addr)
 {
-
 	// 페이지에 연결되어 있는 물리 프레임과의 연결을 끊어준다. 
 	// 유저 가상 메모리의 시작 주소 addr부터 연속으로 나열된 페이지 모두를 매핑 해제한다.
 	// 1. addr 범위의 정해진 주소에 대한 메모리 매핑을 해제한다. (페이지를 지우는 게 아니라 present bit을 0으로 만들어준다)
 	// 2. 이 addr은 반드시 아직 매핑되지 않은 동일한 프로세스에 의한 mmap 호출로부터 반환된 가상주소여야만 한다.
 	// 3. 매핑이 unmapped될 때, 해당 프로세스에 의해 기록된 모든 페이지는 파일에 다시 기록된다.
+
 	// 4. 둘 이상의 프로세스가 동일한 파일을 매핑하는 경우 두 매핑이 동일한 물리 프레임을 공유하는 방식으로 만들어 다룬다
 	// 5. (4)와 연관 그리고 mmap 시스템 호출에는 클라이언트가 페이지를 공유할 것
 
-	// addr 반드시 아직 매핑되지 않은 동일한 프로세스에 의한 mmap 호출로부터 반환된 가상주소인지 체크해주기 
+	// addr가 아직 매핑되지 않은 동일한 프로세스에 의한 mmap 호출로부터 반환된 가상주소인지 체크해주기 
+	if (thread_current()->mmap_addr != addr) {
+		return NULL;
+	}
 
 	// while문 돌면서 file을 page단위로 page-frame 연결을 해제함
 	while(1) {
+		
 		// addr로 page 찾기
 		struct page* page = spt_find_page(&thread_current()->spt, addr);
-		struct container *container = page->uninit.aux;	// page에서 container 가져옴
-
 		if (page==NULL) {	// page가 NULL이면 종료
 			return NULL;
 		}
-
+		struct container *container = page->uninit.aux;	// page에서 container 가져옴
+		
 		// dirty bit가 1이라면(수정했다면) if문 진입
-		if (pml4_is_dirty(thread_current()->pml4, addr)) {	
+		if (pml4_is_dirty(thread_current()->pml4, page->va)) {	
 			// addr(메모리)에 적힌 내용을 file에 덮어쓰기
-			file_write_at(container->file, addr, PGSIZE, container->offset);	
+			file_write_at(container->file, addr, container->page_read_bytes, container->offset);	
 			// dirty bit를 다시 0으로 변경
-			pml4_set_dirty(thread_current()->pml4, addr, 0);
+			pml4_set_dirty(thread_current()->pml4, page->va, 0);
 		}
 		// page-frame 연결 해제
-		pml4_clear_page(thread_current()->pml4, addr);
+		pml4_clear_page(thread_current()->pml4, page->va);
 
 		addr += PGSIZE;	// 다음 페이지로 
 	} 
-	
 }
