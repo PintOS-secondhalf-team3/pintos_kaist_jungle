@@ -2,6 +2,7 @@
 #define USERPROG_PROCESS_H
 
 #include "threads/thread.h"
+#include "filesys/file.h"
 
 bool install_page(void *upage, void *kpage, bool writable);
 tid_t process_create_initd (const char *file_name);
@@ -22,6 +23,8 @@ struct container{
     off_t offset;
     size_t page_read_bytes;
 };
+
+bool lazy_load_segment(struct page *page, void *aux);
 //--------------------project3 Anonymous Page end---------
 
 #endif /* userprog/process.h */
