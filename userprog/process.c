@@ -394,7 +394,7 @@ void process_exit(void)
 	file_close(cur->run_file);
 	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
-	// process_cleanup (); 밑으로 위치 이동
+	// process_cleanup ();  // 밑으로 위치 이동
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up(&cur->wait_sema); // 현재가 자식 wait_sema up
 	sema_down(&cur->free_sema);

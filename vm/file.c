@@ -109,7 +109,7 @@ do_mmap(void *addr, size_t length, int writable,
 		addr += PGSIZE;
 		offset += page_read_bytes;
 	}
-	thread_current()->mmap_addr = start_addr;	// munmap 확인용
+	thread_current()->mmap_addr = start_addr;	// munmap 확인용 -> 추후 list로 수정 요망
 	return start_addr;	// 시작 주소를 반환
 }
 
@@ -130,13 +130,12 @@ void do_munmap(void *addr)
 	// 5. (4)와 연관 그리고 mmap 시스템 호출에는 클라이언트가 페이지를 공유할 것
 
 	// addr가 아직 매핑되지 않은 동일한 프로세스에 의한 mmap 호출로부터 반환된 가상주소인지 체크해주기 
-	if (thread_current()->mmap_addr != addr) {
+	if (thread_current()->mmap_addr != addr) {	// 추후 list에서 찾는 것으로 바꿔야 함
 		return NULL;
 	}
 
 	// while문 돌면서 file을 page단위로 page-frame 연결을 해제함
 	while(1) {
-		
 		// addr로 page 찾기
 		struct page* page = spt_find_page(&thread_current()->spt, addr);
 		if (page==NULL) {	// page가 NULL이면 종료
