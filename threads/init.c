@@ -151,7 +151,7 @@ static void
 paging_init (uint64_t mem_end) {
 	uint64_t *pml4, *pte;
 	int perm;
-	
+	// 실제로 있는 pa에 대응하는 kva까지만 mapping이 만들어짐.(kva의 크기를 제한해줌)
 	// 페이지 테이블을 커널 가상 매핑으로 채운 후 새 페이지 디렉토리를 사용하도록  cpu를 설정한다.
 	// base_pml4 는 생성된 pml4를 뜻함. (pml4 = 페이지 맵 레벨 4)
 	pml4 = base_pml4 = palloc_get_page (PAL_ASSERT | PAL_ZERO);
