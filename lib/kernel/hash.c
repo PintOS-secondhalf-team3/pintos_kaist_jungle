@@ -95,7 +95,6 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
 */
 void hash_destructor(struct hash_elem *e, void* aux) {
 	struct page *free_page = hash_entry(e, struct page, hash_elem);
-
 	vm_dealloc_page(free_page);	// destroy & free
 }
 

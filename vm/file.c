@@ -2,6 +2,7 @@
 
 #include "vm/vm.h"
 #include "userprog/process.h"
+#include "threads/mmu.h"
 
 static bool file_backed_swap_in(struct page *page, void *kva);
 static bool file_backed_swap_out(struct page *page);
@@ -111,6 +112,17 @@ do_mmap(void *addr, size_t length, int writable,
 }
 
 /* Do the munmap */
+//pml4_clear_page 사용 예상
+//pml4_is_dirty
+
+// 1. addr 범위의 정해진 주소에 대한 메모리 매핑을 해제한다. (페이지를 지우는 게 아니라 present bit을 0으로 만들어준다)
+// 2. 이 addr은 반드시 아직 매핑되지 않은 동일한 프로세스에 의한 mmap 호출로부터 반환된 가상주소여야만 한다.
+// 3. 매핑이 unmapped될 때, 해당 프로세스에 의해 기록된 모든 페이지는 파일에 다시 기록된다.
+// 4. 둘 이상의 프로세스가 동일한 파일을 매핑하는 경우 두 매핑이 동일한 물리 프레임을 공유하는 방식으로 만들어 다룬다
+// 5. (4)와 연관 그리고 mmap 시스템 호출에는 클라이언트가 페이지를 공유할 것
 void do_munmap(void *addr)
 {
+	pml4_is_dirty();
+	pml4_clear_page();
+	file_write_at();
 }
