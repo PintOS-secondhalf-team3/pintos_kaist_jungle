@@ -48,15 +48,17 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	page->operations = &anon_ops;
 
 	struct anon_page *anon_page = &page->anon;
+	return true;
 }
 
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
+	printf("anon swap in\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	size_t bitmap_idx = anon_page->swap_location;
-
+ 
 	if(bitmap_test(swap_table, bitmap_idx) == false) {
 		return false;	// bitmap에 false로 표시되었다면, 읽을 수 없으므로 종료
 	}
@@ -77,6 +79,7 @@ anon_swap_in (struct page *page, void *kva) {
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
+	printf("anon swap out\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	// bitmap값이 0인 page를 찾는다.
