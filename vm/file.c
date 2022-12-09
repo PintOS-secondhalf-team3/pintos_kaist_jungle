@@ -7,10 +7,11 @@ static bool file_backed_swap_out(struct page *page);
 static void file_backed_destroy(struct page *page);
 
 /* DO NOT MODIFY this struct */
+// file-backed page를 위한 함수 포인터 테이블
 static const struct page_operations file_ops = {
 	.swap_in = file_backed_swap_in,
 	.swap_out = file_backed_swap_out,
-	.destroy = file_backed_destroy,
+	.destroy = file_backed_destroy, // 페이지를 파괴하는 함수
 	.type = VM_FILE,
 };
 

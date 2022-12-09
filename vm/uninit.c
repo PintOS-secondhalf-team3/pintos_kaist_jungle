@@ -55,7 +55,7 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 static bool
 uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
-	// vm_initializer 및 aux를 가져오고 함수 포인터를 통해 해당 page_initializer를 호출합니다.
+	// vm_initializer 및 aux를 가져오고 함수 포인터를 통해 해당 page_initializer를 호출함
 
 	/* Fetch first, page_initialize may overwrite the values */
 	vm_initializer *init = uninit->init;
@@ -66,7 +66,7 @@ uninit_initialize (struct page *page, void *kva) {
 
 
 	/* TODO: You may need to fix this function. */
-
+	// TYPE이 anon인 경우, page_initailizer: anon_initializer(), init : lazy_load_segment() 여기서 호출됨
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
 }

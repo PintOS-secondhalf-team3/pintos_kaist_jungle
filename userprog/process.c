@@ -18,8 +18,13 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "include/vm/file.h"
+
 #ifdef VM
 #include "vm/vm.h"
+// --------------------project3 Anonymous Page start---------
+#include "vm/file.h"
+// --------------------project3 Anonymous Page end---------
 #endif
 
 static void process_cleanup(void);
@@ -516,7 +521,7 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_)
 	while (if_->rsp % 8 != 0)
 	{
 		if_->rsp--;				  // 주소값을 1 내리고
-		*(uint8_t *)if_->rsp = 0; //데이터에 0 삽입 => 8바이트 저장
+		*(uint8_t *)if_->rsp = 0; // 데이터에 0 삽입 => 8바이트 저장
 	}
 
 	/* 이제는 주소값 자체를 삽입! 이때 센티넬 포함해서 넣기*/
@@ -795,7 +800,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 /* Create a minimal stack by mapping a zeroed page at the USER_STACK */
 static bool
 setup_stack(struct intr_frame *if_)
-{	
+{
 	uint8_t *kpage;
 	bool success = false;
 
@@ -836,10 +841,14 @@ install_page(void *upage, void *kpage, bool writable)
 
 static bool
 lazy_load_segment(struct page *page, void *aux)
-{	// 후반부(project3) 구현
+{ // 후반부(project3) 구현
+
+	struct frame *frame = page->frame;
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+	// aux에서 필요한 정보 빼내기
+	struct file *file = ((struct container *)aux)->file;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -866,6 +875,8 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 	ASSERT(pg_ofs(upage) == 0);
 	ASSERT(ofs % PGSIZE == 0);
 
+	/* upage 주소부터 1페이지 단위씩 UNINIT 페이지를 만들어 프로세스의 spt에 넣는다(vm_alloc_page_with_initializer).
+	이 때 각 페이지의 타입에 맞게 initializer도 맞춰준다. */
 	while (read_bytes > 0 || zero_bytes > 0)
 	{
 		/* Do calculate how to fill this page.
@@ -874,10 +885,19 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
+		/* TODO: Set up aux( container로 대체 ) to pass information to the lazy_load_segment. */
+		// struct container *container;
+		// container = palloc_get_page(PAL_ZERO | PAL_USER);
+
+		// --------------------project3 Anonymous Page start---------
+		struct container *container = (struct container *)malloc(sizeof(struct container));
+		container->file = file;
+		container->page_read_bytes = page_read_bytes;
+		container->offset = ofs;
+		// container->writable = writable;
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, aux))
+											writable, lazy_load_segment, container))
+			// lazy_load_segment는 load_segment 에 있는 vm_alloc_page_with_initializer의 네 번째 인자로서 제공됨.
 			// vm_alloc_page_with_initializer의 5번째 인자인 aux는 load_segment에 설정한 정보
 			// 이 정보를 사용하여 세그먼트를 읽을 파일을 찾고 결국 세그먼트를 메모리로 읽어야 함
 			return false;
@@ -886,14 +906,16 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
+	// --------------------project3 Anonymous Page end---------
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
 static bool
 setup_stack(struct intr_frame *if_)
-{	// 후반부 
+{ // 후반부
 	// setup_stack을 조정해야 함
 	// 스택을 식별하는 방법을 제공해야 할 수도 있음
 	// vm/vm.h의 vm_type에 있는 보조 마커(예: VM_MARKER_0)를 사용하여 페이지를 표시할 수 있음

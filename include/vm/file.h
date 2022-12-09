@@ -6,8 +6,13 @@
 struct page;
 enum vm_type;
 
+
 struct file_page {
+	// --------------------project3 Anonymous Page start---------
+
+	// --------------------project3 Anonymous Page end---------
 };
+
 
 void vm_file_init (void);
 bool file_backed_initializer (struct page *page, enum vm_type type, void *kva);
