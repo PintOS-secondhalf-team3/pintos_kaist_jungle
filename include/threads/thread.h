@@ -2,7 +2,7 @@
 #define THREADS_THREAD_H
 
 #define FDT_PAGES 3
-#define MAX_FD_NUM FDT_PAGES *(1 << 9)
+#define MAX_FD_NUM FDT_PAGES * (1 << 9)
 
 #include <debug.h>
 #include <list.h>
@@ -84,7 +84,7 @@ typedef int tid_t;
  * set to THREAD_MAGIC.  Stack overflow will normally change this
  * value, triggering the assertion. */
 /* The `elem' member has a dual purpose.  It can be an element in
- * the run queue (thread.c), or it can be an eement in a
+ * the run queue (thread.c), or it can be an element in a
  * semaphore wait list (synch.c).  It can be used these two ways
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
@@ -114,6 +114,10 @@ struct thread
 #ifdef VM
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
+	// --------------------project3 Anonymous Page start---------
+	void *stack_bottom;
+	void *rsp_stack;
+	// --------------------project3 Anonymous Page end---------
 #endif
 
 	/* Owned by thread.c. */
@@ -125,7 +129,7 @@ struct thread
 	int fdidx;					 /* 쓰레드가 관리하는 여러 파일 중 FDT 파일에 대한 idx */
 
 	struct file *run_file;
-	
+
 	struct list_elem child_elem; /* 자식 리스트 element */
 	struct list childs;			 /* 자식 리스트 */
 	// bool is_mem_load;					/* 프로세스의 프로그램 메모리 적재 유무 */
