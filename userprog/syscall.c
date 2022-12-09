@@ -154,9 +154,9 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			break;
 		// --------------------project3 Memory Mapped Files end-----------
 		default:
-			// exit(-1);
+			exit(-1);
 			// break;
-			thread_exit();
+			// thread_exit();
 	}
 }
 
@@ -247,7 +247,6 @@ int open(const char *file)
 	lock_release(&filesys_lock);
 	if (open_file == NULL)
 	{
-		// printf("========================if (open_file == NULL) 진입=============\n");
 		return -1;
 	}
 
@@ -442,7 +441,8 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 		return NULL;
 	}
 
-	struct file *target = thread_current()->fd_table[fd];
+	struct file *target = fd_to_file(fd);
+
 	if (target == NULL) {
 		return NULL;
 	}

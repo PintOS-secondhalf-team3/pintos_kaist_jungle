@@ -6,6 +6,7 @@
 
 /* Size of a disk sector in bytes. */
 #define DISK_SECTOR_SIZE 512
+#define SECTORS_PER_PAGE PGSIZE/DISK_SECTOR_SIZE    // 8
 
 /* Index of a disk sector within a disk.
  * Good enough for disks up to 2 TB. */

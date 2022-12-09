@@ -95,6 +95,9 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
 */
 void hash_destructor(struct hash_elem *e, void* aux) {
 	struct page *free_page = hash_entry(e, struct page, hash_elem);
+	if (free_page->operations->type == VM_FILE) {
+		do_munmap(free_page->va);	// type이 file인 경우 munmap도 해야 함
+	}
 	vm_dealloc_page(free_page);	// destroy & free
 }
 

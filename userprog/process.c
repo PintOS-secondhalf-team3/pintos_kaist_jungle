@@ -292,10 +292,11 @@ int process_exec(void *f_name)
 
 	/* We first kill the current context */
 	process_cleanup(); // 새로운 실행 파일을 현재 스레드에 담기 전에 현재 process에 담긴 context 삭제
+	
+	#ifdef VM
 	// process_cleanup()에서 hash table까지 다 없애주기 때문에 다시 hash table init을 실행해야 함
 	supplemental_page_table_init(&thread_current()->spt);
-
-
+	#endif
 	// 필요하지 않은 레지스터까지 0으로 바꿔 "#GP General Protection Exception"; 오류 발생
 	// memset(&_if, 0, sizeof(_if)); 
 
@@ -393,7 +394,7 @@ void process_exit(void)
 	file_close(cur->run_file);
 	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
-	// process_cleanup (); 밑으로 위치 이동
+	// process_cleanup ();  // 밑으로 위치 이동
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up(&cur->wait_sema); // 현재가 자식 wait_sema up
 	sema_down(&cur->free_sema);

@@ -16,7 +16,7 @@
    If bit 0 in an element represents bit K in the bitmap,
    then bit 1 in the element represents bit K+1 in the bitmap,
    and so on. */
-typedef unsigned long elem_type;
+// typedef unsigned long elem_type;
 
 /* Number of bits in an element. */
 #define ELEM_BITS (sizeof (elem_type) * CHAR_BIT)
@@ -24,10 +24,11 @@ typedef unsigned long elem_type;
 /* From the outside, a bitmap is an array of bits.  From the
    inside, it's an array of elem_type (defined above) that
    simulates an array of bits. */
-struct bitmap {
-	size_t bit_cnt;     /* Number of bits. */
-	elem_type *bits;    /* Elements that represent bits. */
-};
+   
+// struct bitmap {
+// 	    size_t bit_cnt;     /* Number of bits. */
+//  	elem_type *bits;    /* Elements that represent bits. */
+// };
 
 /* Returns the index of the element that contains the bit
    numbered BIT_IDX. */
@@ -74,9 +75,9 @@ bitmap_create (size_t bit_cnt) {
 	struct bitmap *b = malloc (sizeof *b);
 	if (b != NULL) {
 		b->bit_cnt = bit_cnt;
-		b->bits = malloc (byte_cnt (bit_cnt));
+		b->bits = malloc (byte_cnt (bit_cnt));	// 비트맵 그 자체를 할당받는다. (필요한 비트 개수를 바이트수로 변환해서)
 		if (b->bits != NULL || bit_cnt == 0) {
-			bitmap_set_all (b, false);
+			bitmap_set_all (b, false);	// 초기에는 모두 false로 
 			return b;
 		}
 		free (b);
@@ -267,13 +268,16 @@ bitmap_all (const struct bitmap *b, size_t start, size_t cnt) {
    consecutive bits in B at or after START that are all set to
    VALUE.
    If there is no such group, returns BITMAP_ERROR. */
+/* start 인덱스부터 찾는다. 
+   만약 값이 value인 비트가 cnt개수만큼 연속되게 있다면 해당 index(첫번째)를 반환
+*/
 size_t
 bitmap_scan (const struct bitmap *b, size_t start, size_t cnt, bool value) {
 	ASSERT (b != NULL);
 	ASSERT (start <= b->bit_cnt);
 
 	if (cnt <= b->bit_cnt) {
-		size_t last = b->bit_cnt - cnt;
+		size_t last = b->bit_cnt - cnt; // last = 비트맵의 총 인덱스 개수 - cnt
 		size_t i;
 		for (i = start; i <= last; i++)
 			if (!bitmap_contains (b, i, cnt, !value))
