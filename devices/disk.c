@@ -231,7 +231,7 @@ disk_read (struct disk *d, disk_sector_t sec_no, void *buffer) {
    acknowledged receiving the data.
    Internally synchronizes accesses to disks, so external
    per-disk locking is unneeded. */
-void
+void 
 disk_write (struct disk *d, disk_sector_t sec_no, const void *buffer) {
 	struct channel *c;
 
@@ -241,7 +241,7 @@ disk_write (struct disk *d, disk_sector_t sec_no, const void *buffer) {
 	c = d->channel;
 	lock_acquire (&c->lock);
 	select_sector (d, sec_no);
-	issue_pio_command (c, CMD_WRITE_SECTOR_RETRY);
+	issue_pio_command (c, CMD_WRITE_SECTOR_RETRY); // 이 함수 내에서 버퍼 내용을 디스크에 write함.
 	if (!wait_while_busy (d))
 		PANIC ("%s: disk write failed, sector=%"PRDSNu, d->name, sec_no);
 	output_sector (c, buffer);

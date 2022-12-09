@@ -355,18 +355,21 @@ rehash (struct hash *h) {
 	   We want one bucket for about every BEST_ELEMS_PER_BUCKET.
 	   We must have at least four buckets, and the number of
 	   buckets must be a power of 2. */
-	new_bucket_cnt = h->elem_cnt / BEST_ELEMS_PER_BUCKET;  //elem의 절반 개수
-	if (new_bucket_cnt < 4)
+
+	new_bucket_cnt = h->elem_cnt / BEST_ELEMS_PER_BUCKET;  //elem의 절반 개수 (elem_cnt / BEST_ELEMS_PER_BUCKET)
+	if (new_bucket_cnt < 4) // elem의 절반 개수가 3일 때 까지는 새로운 bucket 개수를 4로 설정.
 		new_bucket_cnt = 4;
-	while (!is_power_of_2 (new_bucket_cnt))   // elem개수 15개 bucket개수 4, 16일때 8 ,32일때 16 
-		new_bucket_cnt = turn_off_least_1bit (new_bucket_cnt);
+	while (!is_power_of_2 (new_bucket_cnt)) // elem의 절반 개수를 2의 지수승으로 wile문의 조건으로 넣어줌.
+		new_bucket_cnt = turn_off_least_1bit (new_bucket_cnt); // elem의 절반 개수가 2의 지수승이 될 때까지 1bit씩 내려줌.
+		// elem개수 15개 bucket개수 4, 16일때 8 ,32일때 16 
 
 	/* Don't do anything if the bucket count wouldn't change. */
+	// 새 버킷 개수가 기존의 버킷 개수랑 같다면 더이상 해줄 작업이 없으므로 리턴.
 	if (new_bucket_cnt == old_bucket_cnt)
 		return;
 
 	/* Allocate new buckets and initialize them as empty. */
-	new_buckets = malloc (sizeof *new_buckets * new_bucket_cnt);
+	new_buckets = malloc (sizeof *new_buckets * new_bucket_cnt);  // 새 버켓들을 개수에 맞게 메모리 할당 받아줌.
 	if (new_buckets == NULL) {
 		/* Allocation failed.  This means that use of the hash table will
 		   be less efficient.  However, it is still usable, so
@@ -374,13 +377,14 @@ rehash (struct hash *h) {
 		return;
 	}
 	for (i = 0; i < new_bucket_cnt; i++)
-		list_init (&new_buckets[i]);
+		list_init (&new_buckets[i]);    // 버켓들을 초기화 시켜줌.
 
 	/* Install new bucket info. */
 	h->buckets = new_buckets;
 	h->bucket_cnt = new_bucket_cnt;
 
 	/* Move each old element into the appropriate new bucket. */
+	// 기존의 버켓 안의 내용들을 새로 만든 버켓들에 넣어줌.
 	for (i = 0; i < old_bucket_cnt; i++) {
 		struct list *old_bucket;
 		struct list_elem *elem, *next;
@@ -396,7 +400,7 @@ rehash (struct hash *h) {
 		}
 	}
 
-	free (old_buckets);
+	free (old_buckets);  //rehash 작업이 끝났으므로 기존 버켓 프리.
 }
 
 /* Inserts E into BUCKET (in hash table H). */

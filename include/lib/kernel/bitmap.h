@@ -5,6 +5,16 @@
 #include <stddef.h>
 #include <inttypes.h>
 
+typedef unsigned long elem_type;
+//-------project3-swap in out start----------------
+/* From the outside, a bitmap is an array of bits.  From the
+   inside, it's an array of elem_type (defined above) that
+   simulates an array of bits. */
+struct bitmap {    // 기존은 .c파일에 위치함.
+	size_t bit_cnt;     /* Number of bits. */ // slot의 개수
+	elem_type *bits;    /* Elements that represent bits. */ // 비트맵 그 자체 -> 이걸 이진수로 나타내면 됨
+};
+//-------project3-swap in out end----------------
 /* Bitmap abstract data type. */
 
 /* Creation and destruction. */

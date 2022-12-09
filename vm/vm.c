@@ -163,8 +163,10 @@ static struct frame *
 vm_get_victim(void)
 {
 
-	struct frame *victim = NULL;
+	// struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
+	struct list_elem* victim_elem = list_pop_front(&frame_table);
+	struct frame* victim = list_entry(victim_elem, struct frame, frame_elem);
 
 	return victim;
 }
@@ -176,10 +178,11 @@ vm_evict_frame(void)
 {
 	struct frame *victim UNUSED = vm_get_victim();
 	/* TODO: swap out the victim and return the evicted frame. */
-	// 비우고자 하는 해당 프레임을 victim이라 하고, 이 victim과 연결된 가상 페이지를 swap_out()에 인자로 넣어준다.
+	// 비우고자 하는 해당 프레임을 victim이라 하고, 
+	// 이 victim과 연결된 가상 페이지를 swap_out()에 인자로 넣어준다.
 	swap_out(victim->page);
 
-	return NULL;
+	return victim;
 }
 
 //-------project3-memory_management-start--------------
@@ -194,6 +197,7 @@ vm_evict_frame(void)
 */
 static struct frame *
 vm_get_frame (void) {
+	// printf("=============vm_get_frame 들어옴\n");
 	// 새로운 frame 만들기
 	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
 
@@ -202,10 +206,9 @@ vm_get_frame (void) {
 
 	if (frame->kva == NULL) // 유저 풀 공간이 하나도 없다면
 	{
-		PANIC ("todo");
-		// frame = vm_evict_frame(); // 새로운 프레임을 할당
-		// frame->page = NULL;
-		// return frame;
+		frame = vm_evict_frame(); // 새로운 프레임을 할당
+		frame->page = NULL;
+		return frame;
 	}
 	list_push_back(&frame_table, &frame->frame_elem);	// frame table 리스트에 frame elem을 넣음
 
@@ -252,6 +255,7 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
 	if (is_kernel_vaddr(addr)) {
         return false;
 	}
+
 	// 커널이면 thread구조체의 rsp_stack을, 유저면 interrupt frame의 rsp를 사용함
     void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
     if (not_present){

@@ -229,6 +229,7 @@ int add_file_to_fdt(struct file *file)
 		{
 			cur_fd_table[i] = file;
 			cur->fdidx = i;
+			// printf("========================add_file_to_fdt 진입 fd: %d=============\n", cur->fdidx);
 			return cur->fdidx;
 		}
 	}
@@ -238,6 +239,7 @@ int add_file_to_fdt(struct file *file)
 
 int open(const char *file)
 {
+	// printf("========================open 진입=============\n");
 	/* 성공 시 fd를 생성하고 반환, 실패 시 -1 반환 */
 	check_address(file);
 	lock_acquire(&filesys_lock);
@@ -254,7 +256,7 @@ int open(const char *file)
 		file_close(open_file);
 	}
 
-
+	// printf("========================fd: %d=============\n", fd);
 	return fd;
 }
 
