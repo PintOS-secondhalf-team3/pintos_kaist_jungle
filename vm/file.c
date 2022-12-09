@@ -88,6 +88,7 @@ do_mmap(void *addr, size_t length, int writable,
 	/* 파일을 페이지 단위로 잘라 해당 파일의 정보들을 container 구조체에 저장한다.
 	   FILE-BACKED 타입의 UINIT 페이지를 만들어 lazy_load_segment()를 vm_init으로 넣는다. */
 	while(read_bytes > 0 || zero_bytes > 0) {
+		
 		// page_read_bytes만큼 잘라서 읽는다. 
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;	
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -133,7 +134,6 @@ void do_munmap(void *addr)
 	if (thread_current()->mmap_addr != addr) {	// 추후 list에서 찾는 것으로 바꿔야 함
 		return NULL;
 	}
-
 	// while문 돌면서 file을 page단위로 page-frame 연결을 해제함
 	while(1) {
 		// addr로 page 찾기
@@ -143,16 +143,16 @@ void do_munmap(void *addr)
 		}
 		struct container *container = page->uninit.aux;	// page에서 container 가져옴
 		
-		// dirty bit가 1이라면(수정했다면) if문 진입
-		if (pml4_is_dirty(thread_current()->pml4, page->va)) {	
+		// dirty bit가 1이라면(수정했다면) if문 진입 + writable이라면
+		if (pml4_is_dirty(thread_current()->pml4, page->va) && (page->writable == 1)) {	
 			// addr(메모리)에 적힌 내용을 file에 덮어쓰기
 			file_write_at(container->file, addr, container->page_read_bytes, container->offset);	
 			// dirty bit를 다시 0으로 변경
 			pml4_set_dirty(thread_current()->pml4, page->va, 0);
+			
 		}
 		// page-frame 연결 해제
 		pml4_clear_page(thread_current()->pml4, page->va);
-
 		addr += PGSIZE;	// 다음 페이지로 
 	} 
 }

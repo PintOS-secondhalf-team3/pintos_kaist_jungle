@@ -19,7 +19,7 @@ test_main (void)
 	} else {
 		CHECK (wait (child) == 0, "wait for child (should return 0)");
 		quiet = false;
-		
+
 		/* Check file contents. */
 		check_file ("sample.txt", sample, sizeof sample);
 	} 
