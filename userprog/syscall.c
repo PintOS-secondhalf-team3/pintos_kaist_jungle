@@ -35,6 +35,7 @@ int read(int fd, void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 
 struct lock filesys_lock;
 
@@ -148,6 +149,9 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		case SYS_MMAP:
 			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
 			break;
+		case SYS_MUNMAP:
+			munmap(f->R.rdi);
+			break;
 		// --------------------project3 Memory Mapped Files end-----------
 		default:
 			// exit(-1);
@@ -225,6 +229,7 @@ int add_file_to_fdt(struct file *file)
 		{
 			cur_fd_table[i] = file;
 			cur->fdidx = i;
+			// printf("========================add_file_to_fdt 진입 fd: %d=============\n", cur->fdidx);
 			return cur->fdidx;
 		}
 	}
@@ -234,6 +239,7 @@ int add_file_to_fdt(struct file *file)
 
 int open(const char *file)
 {
+	// printf("========================open 진입=============\n");
 	/* 성공 시 fd를 생성하고 반환, 실패 시 -1 반환 */
 	check_address(file);
 	lock_acquire(&filesys_lock);
@@ -241,7 +247,7 @@ int open(const char *file)
 	lock_release(&filesys_lock);
 	if (open_file == NULL)
 	{
-
+		// printf("========================if (open_file == NULL) 진입=============\n");
 		return -1;
 	}
 
@@ -251,7 +257,7 @@ int open(const char *file)
 		file_close(open_file);
 	}
 
-
+	// printf("========================fd: %d=============\n", fd);
 	return fd;
 }
 
@@ -422,7 +428,7 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 	}
 
 	// 2. 가상 유저 page 시작 주소(addr)가 page-align되어야 함, addr이 유저영역이어야 함, addr이 NULL이 아니어야 함, length가 0보다 커야 함
-	if ( (pg_round_down(addr) != addr) || is_kernel_vaddr(addr) || addr == NULL || length <= 0 ) {
+	if ( (pg_round_down(addr) != addr) || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0 ) {
 		return NULL;
 	}
 
@@ -442,4 +448,8 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 	}
 
 	return do_mmap(addr, length, writable, target, offset);
+}
+
+void munmap (void *addr) {
+	do_munmap(addr);
 }

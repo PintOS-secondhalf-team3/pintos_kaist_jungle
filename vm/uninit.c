@@ -42,7 +42,7 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 		.uninit = (struct uninit_page) {
 			.init = init,					// lazy_load_segment
 			.type = type,					// VM_ANON or VM_FILE
-			.aux = aux,
+			.aux = aux,						// container
 			.page_initializer = initializer,// anon_initializer or file_backed_initializer
 		}
 	};

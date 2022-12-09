@@ -62,6 +62,9 @@ file_backed_destroy(struct page *page)
 }
 
 /* Do the mmap */
+/* 가상주소 addr부터 file의 크기만큼 다수의 page를 생성한 뒤, 
+   각 page에 file의 정보를 저장 (file의 offset부터 lenght 크기만큼)
+*/
 void *
 do_mmap(void *addr, size_t length, int writable,
 		struct file *file, off_t offset)
@@ -111,18 +114,45 @@ do_mmap(void *addr, size_t length, int writable,
 	return start_addr;	// 시작 주소를 반환
 }
 
-/* Do the munmap */
-//pml4_clear_page 사용 예상
-//pml4_is_dirty
 
-// 1. addr 범위의 정해진 주소에 대한 메모리 매핑을 해제한다. (페이지를 지우는 게 아니라 present bit을 0으로 만들어준다)
-// 2. 이 addr은 반드시 아직 매핑되지 않은 동일한 프로세스에 의한 mmap 호출로부터 반환된 가상주소여야만 한다.
-// 3. 매핑이 unmapped될 때, 해당 프로세스에 의해 기록된 모든 페이지는 파일에 다시 기록된다.
-// 4. 둘 이상의 프로세스가 동일한 파일을 매핑하는 경우 두 매핑이 동일한 물리 프레임을 공유하는 방식으로 만들어 다룬다
-// 5. (4)와 연관 그리고 mmap 시스템 호출에는 클라이언트가 페이지를 공유할 것
+/* Do the munmap */
+/* 주어진 가상주소 addr에 해당하는 page에 대해서 frame과의 매핑을 해제함
+   만약 page를 수정했다면, 이를 file에 다시 기록함
+*/
 void do_munmap(void *addr)
 {
-	pml4_is_dirty();
-	pml4_clear_page();
-	file_write_at();
+
+	// 페이지에 연결되어 있는 물리 프레임과의 연결을 끊어준다. 
+	// 유저 가상 메모리의 시작 주소 addr부터 연속으로 나열된 페이지 모두를 매핑 해제한다.
+	// 1. addr 범위의 정해진 주소에 대한 메모리 매핑을 해제한다. (페이지를 지우는 게 아니라 present bit을 0으로 만들어준다)
+	// 2. 이 addr은 반드시 아직 매핑되지 않은 동일한 프로세스에 의한 mmap 호출로부터 반환된 가상주소여야만 한다.
+	// 3. 매핑이 unmapped될 때, 해당 프로세스에 의해 기록된 모든 페이지는 파일에 다시 기록된다.
+	// 4. 둘 이상의 프로세스가 동일한 파일을 매핑하는 경우 두 매핑이 동일한 물리 프레임을 공유하는 방식으로 만들어 다룬다
+	// 5. (4)와 연관 그리고 mmap 시스템 호출에는 클라이언트가 페이지를 공유할 것
+
+	// addr 반드시 아직 매핑되지 않은 동일한 프로세스에 의한 mmap 호출로부터 반환된 가상주소인지 체크해주기 
+
+	// while문 돌면서 file을 page단위로 page-frame 연결을 해제함
+	while(1) {
+		// addr로 page 찾기
+		struct page* page = spt_find_page(&thread_current()->spt, addr);
+		struct container *container = page->uninit.aux;	// page에서 container 가져옴
+
+		if (page==NULL) {	// page가 NULL이면 종료
+			return NULL;
+		}
+
+		// dirty bit가 1이라면(수정했다면) if문 진입
+		if (pml4_is_dirty(thread_current()->pml4, addr)) {	
+			// addr(메모리)에 적힌 내용을 file에 덮어쓰기
+			file_write_at(container->file, addr, PGSIZE, container->offset);	
+			// dirty bit를 다시 0으로 변경
+			pml4_set_dirty(thread_current()->pml4, addr, 0);
+		}
+		// page-frame 연결 해제
+		pml4_clear_page(thread_current()->pml4, addr);
+
+		addr += PGSIZE;	// 다음 페이지로 
+	} 
+	
 }
