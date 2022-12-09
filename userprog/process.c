@@ -842,13 +842,25 @@ install_page(void *upage, void *kpage, bool writable)
 static bool
 lazy_load_segment(struct page *page, void *aux)
 { // 후반부(project3) 구현
-
+  //-------project3-memory_management-start--------------
 	struct frame *frame = page->frame;
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
 	// aux에서 필요한 정보 빼내기
 	struct file *file = ((struct container *)aux)->file;
+	off_t offsetof = ((struct container *)aux)->offset;
+	size_t page_read_bytes = ((struct container *)aux)->page_read_bytes;
+	size_t page_zero_bytes = PGSIZE - page_read_bytes;
+	file_seek(file, offsetof); // 파일 읽을 위치 세팅
+	if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
+	{
+		palloc_free_page(frame->kva);
+		return false;
+	}
+	memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
+	return true;
+	//-------project3-memory_management-end----------------
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
