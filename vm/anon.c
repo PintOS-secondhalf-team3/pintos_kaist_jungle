@@ -71,21 +71,26 @@ anon_swap_in(struct page *page, void *kva)
 	// printf("anon swap in\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
-	size_t bitmap_idx = anon_page->swap_index;
+	/* swap out된 페이지가 디스크 스왑 영역 어디에 저장되었는지는
+   anon_page 구조체 안에 저장되어 있다. */
+	int bitmap_idx = anon_page->swap_index;
 
+	// 스왑 테이블에서 해당 스왑 슬롯이 진짜 사용 중인지 체크한다.
 	if (bitmap_test(swap_table, bitmap_idx) == false)
 	{
 		return false; // bitmap에 false로 표시되었다면, 읽을 수 없으므로 종료
 	}
 
 	// swap area(disk)에서 frame으로(kva통해서) read하기
+	// 해당 스왑 영역의 데이터를 가상 주소 공간 kva에 써 준다.
 	for (int i = 0; i < SECTORS_PER_PAGE; i++)
 	{
 		disk_read(swap_disk, bitmap_idx * SECTORS_PER_PAGE + i, kva + DISK_SECTOR_SIZE * i);
 	}
 
 	// swap table 업데이트
-	bitmap_set(swap_table, bitmap_idx, false); // bitmap을 다시 false로 세팅
+	// 다시 해당 스왑 슬롯을 false로 만들어준다.
+	bitmap_set(swap_table, bitmap_idx, false);
 	// bitmap_flip(swap_table, bitmap_idx);
 
 	return true;
@@ -128,6 +133,7 @@ anon_swap_out(struct page *page)
 	// 페이지의 swap_index 값을 이 페이지가 저장된 swap slot의 번호로 써 준다.
 	// why ? ->이 페이지가 디스크의 스왑 영역 중 어디에 swap 되었는지를 확인할 수 있도록 한다.
 	anon_page->swap_index = bitmap_idx;
+	// SWAP OUT된 페이지에 저장된 swap_index 값으로 스왑 슬롯을 찾아 해당 슬롯에 저장된 데이터를 다시 페이지로 원복시킨다.
 
 	return true;
 	//-------project3-swap in out end----------------

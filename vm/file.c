@@ -91,20 +91,24 @@ file_backed_swap_in(struct page *page, void *kva)
 static bool
 file_backed_swap_out(struct page *page)
 {
+	// do_munmap()과 거의 유사하지만 단지 do_munmap()은 연속된 가상 메모리 공간에 매핑된 페이지들을 모두 swap out해주는 것이고
+	// file_backed_swap_out()은 한 페이지에 대한 매핑을 해제해준다는 것이 다르다.
 	// printf("file swap out 들어옴\n");
 	struct file_page *file_page UNUSED = &page->file;
 
-	if (page==NULL) {	// page가 NULL이면 종료
+	if (page==NULL) {
 		return NULL;
 	}
 
-	struct container *container = page->uninit.aux;	// page에서 container에서 가져옴
+	struct container *container = (struct container *)page->uninit.aux;	// page에서 container에서 가져옴
+
 	// dirtybit가 1인 경우 수정사항을 file에 업데이트(swapout)해준다. 
+	// 그리고 더티 비트를 0으로 만들어둔다.
 	if(pml4_is_dirty(thread_current()->pml4, page->va)) {
-		file_write_at(container->file,page->va, container->page_read_bytes, container->offset);
+		file_write_at(container->file, page->va, container->page_read_bytes, container->offset);
 		pml4_set_dirty(thread_current()->pml4, page->va, 0);
 	}
-	// page-frame 연결 해제
+	// present bit를 0으로 만든다.
 	pml4_clear_page(thread_current()->pml4, page->va);
 
 	return true;
