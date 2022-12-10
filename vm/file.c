@@ -52,6 +52,7 @@ file_backed_swap_in(struct page *page, void *kva)
 	struct file_page *file_page UNUSED = &page->file;
 
 	if (page==NULL) {	// page가 NULL이면 종료
+	if (page==NULL) {	// page가 NULL이면 종료
 		return NULL;
 	}
 
@@ -90,7 +91,6 @@ file_backed_swap_in(struct page *page, void *kva)
 static bool
 file_backed_swap_out(struct page *page)
 {
-	printf("file swap out 들어옴\n");
 	struct file_page *file_page UNUSED = &page->file;
 
 	if (page==NULL) {	// page가 NULL이면 종료
