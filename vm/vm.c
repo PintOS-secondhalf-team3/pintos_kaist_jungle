@@ -7,9 +7,11 @@
 #include "include/threads/thread.h"
 #include "userprog/process.h"
 #include "threads/vaddr.h"
+#include "threads/mmu.h"
 
 //-------project3-memory_management-start--------------
 struct list frame_table;	// frame_table을 전역으로 선언함
+struct list_elem *start;
 //-------project3-memory_management-end----------------
 
 /* Initializes the virtual memory subsystem by invoking
@@ -163,11 +165,27 @@ static struct frame *
 vm_get_victim(void)
 {
 
-	// struct frame *victim = NULL;
+	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
-	struct list_elem* victim_elem = list_pop_front(&frame_table);
-	struct frame* victim = list_entry(victim_elem, struct frame, frame_elem);
+	struct thread* curr = thread_current();
+	struct list_elem* e = start;
 
+	for (start = e ; start != list_end(&frame_table); start = list_next(start))
+	{
+		victim = list_entry(start, struct frame, frame_elem);
+		if (pml4_is_accessed(curr->pml4, victim->page->va)) //page table entry가 최근에 액세스된 경우
+			pml4_set_accessed(curr->pml4, victim->page->va, 0);  //accessed bit을 0으로 설정한다.
+		else // page table entry가 없는 경우 (pml4_is_accessed에서 false 반환)
+			return victim;
+	}
+	for(start = list_begin(&frame_table) ; start != list_end(&frame_table); start = list_next(start))
+	{
+		victim = list_entry(start, struct frame, frame_elem);
+		if (pml4_is_accessed(curr->pml4, victim->page->va))
+			pml4_set_accessed(curr->pml4, victim->page->va, 0);
+		else
+			return victim;
+	}
 	return victim;
 }
 
@@ -180,9 +198,10 @@ vm_evict_frame(void)
 	/* TODO: swap out the victim and return the evicted frame. */
 	// 비우고자 하는 해당 프레임을 victim이라 하고, 
 	// 이 victim과 연결된 가상 페이지를 swap_out()에 인자로 넣어준다.
-	printf("---------swap out 전 victim: %d\n", victim->page->operations->type);
 	swap_out(victim->page);
-	printf("---------swap out 후\n");
+	victim->page = NULL;
+	memset(victim->kva,0, PGSIZE); //?? -예린-
+
 	return victim;
 }
 
@@ -207,10 +226,9 @@ vm_get_frame (void) {
 
 	if (frame->kva == NULL) // 유저 풀 공간이 하나도 없다면
 	{
-		printf("============evict해야함\n");
 		frame = vm_evict_frame(); // 새로운 프레임을 할당
-		printf("============frame받아왔음\n");
-		frame->page = NULL;
+		//list_push_back(&frame_table, &frame->frame_elem);
+		//frame->page = NULL;
 		return frame;
 	}
 	list_push_back(&frame_table, &frame->frame_elem);	// frame table 리스트에 frame elem을 넣음
@@ -248,12 +266,11 @@ vm_handle_wp(struct page *page UNUSED)
 // 접근 하는데 실제로는 원하는 데이터가 물리 메모리에 load 혹은 저장되어있지 않을 경우 발생함
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 { 	
-	printf("try handle 들어옴\n");
+	//printf("try handle 들어옴\n");
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-
 	// --------------------project3 Anonymous Page start---------
 	// 먼저 유효한 page fault인지 확인
 	if (is_kernel_vaddr(addr)) {
@@ -278,7 +295,8 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
     return false;
 	// --------------------project3 Anonymous Page end----------
 
-	return vm_do_claim_page(page);
+	int result = vm_do_claim_page(page);
+	return result;
 }
 
 /* Free the page.
@@ -323,16 +341,17 @@ vm_do_claim_page(struct page *page)
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
-
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	// install_page: page와 frame의 연결정보를 pml4에 추가하는 함수
 	// 페이지테이블에 frame과 page의 연결을 추가함
 	if (install_page(page->va, frame->kva, page->writable))
 	{
+		// printf("page: %p ,kva: %p\n", page->va, frame->kva);
 		// swap in: disk(swap area)에서 메모리로 데이터 가져옴
 		// page fault 나고 swap_in 실행 시 uninit_initializer가 실행됨
 		// uninit_initalizer에서 init에 있던 lazy_load_segment 호출되고, type에 맞는 initializer 호출됨
-		return swap_in(page, frame->kva);	
+		int result = swap_in(page, frame->kva);	
+		return result;
 	}
 	return false;
 }

@@ -54,8 +54,8 @@ file_backed_swap_in(struct page *page, void *kva)
 	if (page==NULL) {	// page가 NULL이면 종료 // 
 		return NULL;
 	}
-
-	struct container *container = page->uninit.aux;	// page에서 container에서 가져옴
+	// 12/10 수정: (struct container *) 추가;
+	struct container *container = (struct container *)page->uninit.aux;	// page에서 container에서 가져옴
 	struct file *file = container->file;
 	off_t offsetof =container->offset;
 	size_t page_read_bytes = container->page_read_bytes;
@@ -96,8 +96,8 @@ file_backed_swap_out(struct page *page)
 	if (page==NULL) {	// page가 NULL이면 종료
 		return NULL;
 	}
-
-	struct container *container = page->uninit.aux;	// page에서 container에서 가져옴
+	// 12/10 수정: (struct container *) 추가;
+	struct container *container = (struct container *) page->uninit.aux;	// page에서 container에서 가져옴
 	// dirtybit가 1인 경우 수정사항을 file에 업데이트(swapout)해준다. 
 	if(pml4_is_dirty(thread_current()->pml4, page->va)) {
 		file_write_at(container->file,page->va, container->page_read_bytes, container->offset);

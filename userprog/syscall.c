@@ -88,6 +88,23 @@ void check_address(void *addr)
 	/* 잘못된 접근일 경우 프로세스 종료 */
 }
 
+struct page * check_address_prject3(void *addr){
+    if(is_kernel_vaddr(addr)){
+        exit(-1);
+    }
+    return spt_find_page(&thread_current()->spt,addr);
+}
+
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write){
+    for(int i=0; i<size; i++){
+        struct page* page = check_address_prject3(buffer + i);
+        if(page == NULL)
+            exit(-1);
+        if(to_write == true && page->writable == false)
+            exit(-1);
+    }
+}
+
 /* The main system call interface */
 void syscall_handler(struct intr_frame *f UNUSED)
 {
@@ -114,8 +131,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = remove(f->R.rdi);
 			break;
 		case SYS_WRITE:
+		{
+			check_valid_buffer(f->R.rdi, f->R.rsi, f->R.rdx, 0);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		}
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
 			break;
@@ -137,8 +157,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
+		{
+			check_valid_buffer(f->R.rdi, f->R.rsi, f->R.rdx, 1);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		}
 		case SYS_SEEK:
 			seek(f->R.rdi, f->R.rsi);
 			break;
