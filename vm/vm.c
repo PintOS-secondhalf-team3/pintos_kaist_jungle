@@ -178,6 +178,7 @@ vm_evict_frame(void)
 	// 비우고자 하는 해당 프레임을 victim이라 하고, 
 	// 이 victim과 연결된 가상 페이지를 swap_out()에 인자로 넣어준다.
 	// printf("---------swap out 전 victim: %d\n", victim->page->operations->type);
+	// printf("---------swap out 전 victim: %d\n", victim->page->operations->type);
 	swap_out(victim->page);
 	victim->page = NULL;
 	memset(victim->kva, 0, PGSIZE);
@@ -207,7 +208,6 @@ vm_get_frame (void) {
 	if (frame->kva == NULL) // 유저 풀 공간이 하나도 없다면
 	{
 		frame = vm_evict_frame(); // 새로운 프레임을 할당
-		frame->page = NULL;
 		return frame;
 	}
 	list_push_back(&frame_table, &frame->frame_elem);	// frame table 리스트에 frame elem을 넣음
@@ -245,6 +245,7 @@ vm_handle_wp(struct page *page UNUSED)
 // 접근 하는데 실제로는 원하는 데이터가 물리 메모리에 load 혹은 저장되어있지 않을 경우 발생함
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 { 	
+	// printf("try handle 들어옴\n");
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */

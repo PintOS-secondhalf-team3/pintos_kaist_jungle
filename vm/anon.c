@@ -30,8 +30,7 @@ vm_anon_init (void) { // 익명 페이지 하위 시스템을 초기화
 	// 1. swap disk를 셋업.
 	swap_disk = disk_get(1,1);
 	// swap_size: page의 개수 = slot의 개수, disk_size(swap_disk): sector의 개수	
-	size_t swap_size = disk_size(swap_disk)/8; //SECTORS_PER_PAGE;	// 1page = 1slot = 8sector
-	// printf("swap_size: %d\n", swap_size);
+	size_t swap_size = disk_size(swap_disk)/8; // SECTORS_PER_PAGE;	// 1page = 1slot = 8sector
 	swap_table = bitmap_create(swap_size);  // swap_table을 bitmap자료구조로 만듬.
 	//-------project3-swap in out end----------------
 }
@@ -54,7 +53,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
-	// printf("======anon swap in 시작\n");
+	// printf("anon swap in\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	size_t bitmap_idx = anon_page->swap_location;
@@ -81,7 +80,7 @@ anon_swap_in (struct page *page, void *kva) {
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
-	// printf("======anon swap out 시작\n");
+	// printf("anon swap out\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	// bitmap값이 0인 page를 찾는다.

@@ -38,6 +38,8 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
 void check_valid_buffer(void* buffer, unsigned size, bool to_write);
 struct page * check_address2(void *addr);
+void check_valid_buffer(void* buffer, unsigned size, bool to_write);
+struct page * check_address2(void *addr);
 
 struct lock filesys_lock;
 
@@ -267,7 +269,7 @@ int write(int fd, const void *buffer, unsigned size)
 	struct file *file = fd_to_file(fd);
 	check_address(buffer);
 	// --------------------project3 start----------------------
-	check_valid_buffer(buffer, size, 1);
+	// check_valid_buffer(buffer, size, 0); // 1
 	// --------------------project3 end------------------------
 	if (file == NULL)
 	{
@@ -355,7 +357,7 @@ int read(int fd, void *buffer, unsigned size)
 	check_address(buffer);
 	check_address(buffer + size - 1); // -1은 null 전까지만 유효하면 돼서
 	// --------------------project3 start----------------------
-	check_valid_buffer(buffer, size, 0);
+	// check_valid_buffer(buffer, size, 0); // 0
 	// --------------------project3 end------------------------
 	char *buf = buffer;
 	int read_size;
@@ -426,6 +428,7 @@ tell(int fd)
 	}
 	return file_tell(file);
 }
+
 // --------------------project3 start----------------------
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 
