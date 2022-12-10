@@ -49,7 +49,7 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva)
 static bool
 file_backed_swap_in(struct page *page, void *kva)
 {
-	printf("file swap in 들어옴\n");
+	// printf("file swap in 들어옴\n");
 	struct file_page *file_page UNUSED = &page->file;
 
 	if (page==NULL) {	// page가 NULL이면 종료 // 
@@ -91,7 +91,7 @@ file_backed_swap_in(struct page *page, void *kva)
 static bool
 file_backed_swap_out(struct page *page)
 {
-	printf("file swap out 들어옴\n");
+	// printf("file swap out 들어옴\n");
 	struct file_page *file_page UNUSED = &page->file;
 
 	if (page==NULL) {	// page가 NULL이면 종료
