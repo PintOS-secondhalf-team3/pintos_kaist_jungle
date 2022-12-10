@@ -7,7 +7,11 @@
 
 /* DO NOT MODIFY BELOW LINE */
 static struct disk *swap_disk;
+
 //-------project3-swap in out start----------------
+// 여기 스왑 테이블의 경우 각각의 비트는 스왑 슬롯 각각과 매칭된다.
+// 스왑 테이블에서 해당 스왑 슬롯에 해당하는 비트가 1이라는 말은 그에
+// 대응되는 페이지가 swap out되어 디스크의 스왑 공간에 임시적으로 저장되었다는 뜻이다. 
 struct bitmap* swap_table;
 //-------project3-swap in out end----------------
 static bool anon_swap_in (struct page *page, void *kva);
@@ -54,7 +58,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
-	printf("anon swap in\n");
+	// printf("anon swap in\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	size_t bitmap_idx = anon_page->swap_location;
@@ -79,7 +83,7 @@ anon_swap_in (struct page *page, void *kva) {
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
-	printf("anon swap out\n");
+	// printf("anon swap out\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	// bitmap값이 0인 page를 찾는다.
