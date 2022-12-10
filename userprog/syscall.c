@@ -81,11 +81,15 @@ struct page* check_address(void *addr)
 		exit(-1);
 	}
 	*/
-	if (!is_user_vaddr(addr) || addr == NULL || spt_find_page(&cur->spt, addr) == NULL)
+	/* 잘못된 접근일 경우 프로세스 종료 */
+	if (!is_user_vaddr(addr) || addr == NULL)
+	// spt_find_page(&cur->spt, addr) == NULL)
 	{
 		exit(-1);
 	}
-	/* 잘못된 접근일 경우 프로세스 종료 */
+	/* 유저 가상 주소면 SPT에서 페이지 찾아서 리턴 */
+	return spt_find_page(&cur->spt, addr);
+	
 }
 
 /* The main system call interface */

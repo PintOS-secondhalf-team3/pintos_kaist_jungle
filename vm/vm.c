@@ -68,7 +68,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 
 	struct supplemental_page_table *spt = &thread_current()->spt;
 
-	/* Check whether the upage is already occupied or not. */
+	/*  whether the upage is already occupied or not. */
 	if (spt_find_page(spt, upage) == NULL) // page fault나면(spt에 upage가 없으면) if문 진입
 	{
 		// 유저 페이지가 아직 없으니까 초기화를 해줘야 함
