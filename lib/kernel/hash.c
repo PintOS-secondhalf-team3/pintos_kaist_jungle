@@ -8,6 +8,7 @@
 #include "hash.h"
 #include "../debug.h"
 #include "threads/malloc.h"
+#include "vm/vm.h"
 
 #define list_elem_to_hash_elem(LIST_ELEM)                       \
 	list_entry(LIST_ELEM, struct hash_elem, list_elem)
@@ -50,8 +51,9 @@ hash_init (struct hash *h,
    functions hash_clear(), hash_destroy(), hash_insert(),
    hash_replace(), or hash_delete(), yields undefined behavior,
    whether done in DESTRUCTOR or elsewhere. */
+// hash에서 모든 elem 제거 ( 반드시 이 hash는 hash_init()을 거쳤어야 함)
 void
-hash_clear (struct hash *h, hash_action_func *destructor) { // hash에서 모든 elem 제거 ( 반드시 이 hash는 hash_init()을 거쳤어야 함)
+hash_clear (struct hash *h, hash_action_func *destructor) { 
 	size_t i;
 
 	for (i = 0; i < h->bucket_cnt; i++) {
@@ -80,12 +82,23 @@ hash_clear (struct hash *h, hash_action_func *destructor) { // hash에서 모든
    hash_insert(), hash_replace(), or hash_delete(), yields
    undefined behavior, whether done in DESTRUCTOR or
    elsewhere. */
-// 인자 action이 존재한다면, hash안의 각 elem마다 호출한다. hash_clear와 다른 점은, hash 자체를 free시킨다는 점이다.
+/* 인자 action이 존재한다면, hash안의 각 elem마다 action을 호출한다. hash_clear와 다른 점은, hash 자체를 free시킨다는 점이다.
+*/
 void
 hash_destroy (struct hash *h, hash_action_func *destructor) {
 	if (destructor != NULL)
 		hash_clear (h, destructor);
 	free (h->buckets);
+}
+
+/* hash_destructor: hash_destroy의 action func로 인자로 받은 page를 destroy하고, free시킨다.
+*/
+void hash_destructor(struct hash_elem *e, void* aux) {
+	struct page *free_page = hash_entry(e, struct page, hash_elem);
+	if (free_page->operations->type == VM_FILE) {
+		do_munmap(free_page->va);	// type이 file인 경우 munmap도 해야 함
+	}
+	vm_dealloc_page(free_page);	// destroy & free
 }
 
 /* Inserts NEW into hash table H and returns a null pointer, if
@@ -94,8 +107,8 @@ hash_destroy (struct hash *h, hash_action_func *destructor) {
    without inserting NEW. */
 struct hash_elem *
 hash_insert (struct hash *h, struct hash_elem *new) {
-	struct list *bucket = find_bucket (h, new);
-	struct hash_elem *old = find_elem (h, bucket, new);
+	struct list *bucket = find_bucket (h, new); //적절한 버켓을 찾는다.
+	struct hash_elem *old = find_elem (h, bucket, new);// 인자로 준 해시에서 해당 해쉬엘렘을 찾고 찾으면 해당 해시엘렘 반환, 못 찾으면 null포인터 반환.
 
 	if (old == NULL)
 		insert_elem (h, bucket, new);
@@ -342,18 +355,21 @@ rehash (struct hash *h) {
 	   We want one bucket for about every BEST_ELEMS_PER_BUCKET.
 	   We must have at least four buckets, and the number of
 	   buckets must be a power of 2. */
-	new_bucket_cnt = h->elem_cnt / BEST_ELEMS_PER_BUCKET;
-	if (new_bucket_cnt < 4)
+
+	new_bucket_cnt = h->elem_cnt / BEST_ELEMS_PER_BUCKET;  //elem의 절반 개수 (elem_cnt / BEST_ELEMS_PER_BUCKET)
+	if (new_bucket_cnt < 4) // elem의 절반 개수가 3일 때 까지는 새로운 bucket 개수를 4로 설정.
 		new_bucket_cnt = 4;
-	while (!is_power_of_2 (new_bucket_cnt))
-		new_bucket_cnt = turn_off_least_1bit (new_bucket_cnt);
+	while (!is_power_of_2 (new_bucket_cnt)) // elem의 절반 개수를 2의 지수승으로 wile문의 조건으로 넣어줌.
+		new_bucket_cnt = turn_off_least_1bit (new_bucket_cnt); // elem의 절반 개수가 2의 지수승이 될 때까지 1bit씩 내려줌.
+		// elem개수 15개 bucket개수 4, 16일때 8 ,32일때 16 
 
 	/* Don't do anything if the bucket count wouldn't change. */
+	// 새 버킷 개수가 기존의 버킷 개수랑 같다면 더이상 해줄 작업이 없으므로 리턴.
 	if (new_bucket_cnt == old_bucket_cnt)
 		return;
 
 	/* Allocate new buckets and initialize them as empty. */
-	new_buckets = malloc (sizeof *new_buckets * new_bucket_cnt);
+	new_buckets = malloc (sizeof *new_buckets * new_bucket_cnt);  // 새 버켓들을 개수에 맞게 메모리 할당 받아줌.
 	if (new_buckets == NULL) {
 		/* Allocation failed.  This means that use of the hash table will
 		   be less efficient.  However, it is still usable, so
@@ -361,13 +377,14 @@ rehash (struct hash *h) {
 		return;
 	}
 	for (i = 0; i < new_bucket_cnt; i++)
-		list_init (&new_buckets[i]);
+		list_init (&new_buckets[i]);    // 버켓들을 초기화 시켜줌.
 
 	/* Install new bucket info. */
 	h->buckets = new_buckets;
 	h->bucket_cnt = new_bucket_cnt;
 
 	/* Move each old element into the appropriate new bucket. */
+	// 기존의 버켓 안의 내용들을 새로 만든 버켓들에 넣어줌.
 	for (i = 0; i < old_bucket_cnt; i++) {
 		struct list *old_bucket;
 		struct list_elem *elem, *next;
@@ -383,7 +400,7 @@ rehash (struct hash *h) {
 		}
 	}
 
-	free (old_buckets);
+	free (old_buckets);  //rehash 작업이 끝났으므로 기존 버켓 프리.
 }
 
 /* Inserts E into BUCKET (in hash table H). */

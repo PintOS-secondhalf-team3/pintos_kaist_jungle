@@ -11,10 +11,11 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "userprog/process.h"
+#include "vm/vm.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
-void check_address(void *addr);
+struct page* check_address(void *addr);
 
 void halt(void);
 void exit(int status);
@@ -33,6 +34,8 @@ int filesize(int fd);
 int read(int fd, void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap (void *addr);
 
 struct lock filesys_lock;
 
@@ -66,22 +69,23 @@ void syscall_init(void)
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인 하는 함수
 Pintos에서는 시스템 콜이 접근할 수 있는 주소를 0x8048000~0xc0000000으로 제한함
 유저 영역을 벗어난 영역일 경우 프로세스 종료(exit(-1)) */
-struct page check_address(void *addr)
+struct page* check_address(void *addr)
 {
 	struct thread *cur = thread_current();
 	/* 1. 포인터가 가리키는 주소가 유저영역의 주소인지 확인 */
 	/* 2. 포인터가 가리키는 주소가 존재하는지 확인 */
 	/* 3. 포인터가 가리키는 주소에 해당하는 실주소가 없는 경우 NULL 반환 */
-	// || pml4_get_page(cur->pml4, addr) == NULL ( 프로젝트 3 구현하면서 조건에서 제외함 )
-	if (!is_user_vaddr(addr) || addr == NULL)
+	/*
+	if (!is_user_vaddr(addr) || addr == NULL || pml4_get_page(cur->pml4, addr) == NULL)
 	{
 		exit(-1);
 	}
-	// ------------project3 Anonymous start ---------
-	/* 유저 가상 주소면 SPT에서 페이지 찾아서 리턴 */ 
-	return spt_find_page(&thread_current()->spt, addr);
-	// ------------project3 Anonymous end ---------
-
+	*/
+	if (!is_user_vaddr(addr) || addr == NULL || spt_find_page(&cur->spt, addr) == NULL)
+	{
+		exit(-1);
+	}
+	/* 잘못된 접근일 경우 프로세스 종료 */
 }
 
 /* The main system call interface */
@@ -89,60 +93,70 @@ void syscall_handler(struct intr_frame *f UNUSED)
 {
 	/* 유저 스택에 저장되어 있는 시스템 콜 넘버를 이용해 시스템 콜 핸들러 구현 */
 	int sys_num = f->R.rax;
+
+	// 스레드 구조체에 유저모드(interrupt frame에 있음)의 rsp를 저장함
+	thread_current()->rsp_stack = f->rsp;	
+
 	// check_address(sys_num);  /* 스택 포인터가 유저 영역인지 확인 */
-	// printf("===========syscall_handler 안========%d=======\n", sys_num);
 
 	switch (sys_num)
 	{
-	case SYS_HALT:
-		halt();
-		break;
-	case SYS_EXIT:
-		exit(f->R.rdi);
-		break;
-	case SYS_CREATE:
-		f->R.rax = create(f->R.rdi, f->R.rsi);
-		break;
-	case SYS_REMOVE:
-		f->R.rax = remove(f->R.rdi);
-		break;
-	case SYS_WRITE:
-		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	case SYS_WAIT:
-		f->R.rax = wait(f->R.rdi);
-		break;
-	case SYS_FORK:
-		f->R.rax = fork(f->R.rdi, f);
-		break;
-	case SYS_EXEC:
-		if (exec(f->R.rdi) == -1)
-		{
+		case SYS_HALT:
+			halt();
+			break;
+		case SYS_EXIT:
+			exit(f->R.rdi);
+			break;
+		case SYS_CREATE:
+			f->R.rax = create(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_REMOVE:
+			f->R.rax = remove(f->R.rdi);
+			break;
+		case SYS_WRITE:
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_WAIT:
+			f->R.rax = wait(f->R.rdi);
+			break;
+		case SYS_FORK:
+			f->R.rax = fork(f->R.rdi, f);
+			break;
+		case SYS_EXEC:
+			if (exec(f->R.rdi) == -1){
+				exit(-1);
+			}
+			break;
+		case SYS_OPEN:
+			f->R.rax = open(f->R.rdi);
+			break;
+		case SYS_CLOSE:
+			close(f->R.rdi);
+			break;
+		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
+			break;
+		case SYS_READ:
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+			break;
+		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
+			break;
+		case SYS_TELL:
+			f->R.rax = tell(f->R.rdi);
+			break;
+		// --------------------project3 Memory Mapped Files start---------
+		case SYS_MMAP:
+			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+			break;
+		case SYS_MUNMAP:
+			munmap(f->R.rdi);
+			break;
+		// --------------------project3 Memory Mapped Files end-----------
+		default:
 			exit(-1);
-		}
-		break;
-	case SYS_OPEN:
-		f->R.rax = open(f->R.rdi);
-		break;
-	case SYS_CLOSE:
-		close(f->R.rdi);
-		break;
-	case SYS_FILESIZE:
-		f->R.rax = filesize(f->R.rdi);
-		break;
-	case SYS_READ:
-		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
-		break;
-	case SYS_SEEK:
-		seek(f->R.rdi, f->R.rsi);
-		break;
-	case SYS_TELL:
-		f->R.rax = tell(f->R.rdi);
-		break;
-	default:
-		// exit(-1);
-		// break;
-		thread_exit();
+			// break;
+			// thread_exit();
 	}
 }
 
@@ -215,6 +229,7 @@ int add_file_to_fdt(struct file *file)
 		{
 			cur_fd_table[i] = file;
 			cur->fdidx = i;
+			// printf("========================add_file_to_fdt 진입 fd: %d=============\n", cur->fdidx);
 			return cur->fdidx;
 		}
 	}
@@ -224,6 +239,7 @@ int add_file_to_fdt(struct file *file)
 
 int open(const char *file)
 {
+	// printf("========================open 진입=============\n");
 	/* 성공 시 fd를 생성하고 반환, 실패 시 -1 반환 */
 	check_address(file);
 	lock_acquire(&filesys_lock);
@@ -231,7 +247,6 @@ int open(const char *file)
 	lock_release(&filesys_lock);
 	if (open_file == NULL)
 	{
-
 		return -1;
 	}
 
@@ -241,6 +256,7 @@ int open(const char *file)
 		file_close(open_file);
 	}
 
+	// printf("========================fd: %d=============\n", fd);
 	return fd;
 }
 
@@ -401,4 +417,39 @@ tell(int fd)
 		return;
 	}
 	return file_tell(file);
+}
+
+void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+
+	// 1. 파일 내용을 읽는 위치(커서)(offset)가 page-align되어야 함 -> struct file의 pos멤버
+	if (offset % PGSIZE != 0) {
+		return NULL;
+	}
+
+	// 2. 가상 유저 page 시작 주소(addr)가 page-align되어야 함, addr이 유저영역이어야 함, addr이 NULL이 아니어야 함, length가 0보다 커야 함
+	if ( (pg_round_down(addr) != addr) || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0 ) {
+		return NULL;
+	}
+
+	// 3. fd가 콘솔 입출력(STDIN/STDOUT)이 아니어야 함
+	if (fd == 0 || fd == 1) {
+		exit(-1);
+	}
+
+	// 4. 매핑하려는 페이지가 이미 spt에 존재하는 페이지이면 안됨
+	if (spt_find_page(&thread_current()->spt, addr)) {
+		return NULL;
+	}
+
+	struct file *target = fd_to_file(fd);
+
+	if (target == NULL) {
+		return NULL;
+	}
+
+	return do_mmap(addr, length, writable, target, offset);
+}
+
+void munmap (void *addr) {
+	do_munmap(addr);
 }

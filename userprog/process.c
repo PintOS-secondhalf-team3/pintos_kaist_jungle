@@ -19,7 +19,6 @@
 #include "threads/vaddr.h"
 #include "intrinsic.h"
 #include "include/vm/file.h"
-
 #ifdef VM
 #include "vm/vm.h"
 // --------------------project3 Anonymous Page start---------
@@ -293,8 +292,13 @@ int process_exec(void *f_name)
 
 	/* We first kill the current context */
 	process_cleanup(); // 새로운 실행 파일을 현재 스레드에 담기 전에 현재 process에 담긴 context 삭제
-
-	// memset(&_if, 0, sizeof(_if)); // 필요하지 않은 레지스터까지 0으로 바꿔 "#GP General Protection Exception"; 오류 발생
+	
+	#ifdef VM
+	// process_cleanup()에서 hash table까지 다 없애주기 때문에 다시 hash table init을 실행해야 함
+	supplemental_page_table_init(&thread_current()->spt);
+	#endif
+	// 필요하지 않은 레지스터까지 0으로 바꿔 "#GP General Protection Exception"; 오류 발생
+	// memset(&_if, 0, sizeof(_if)); 
 
 	/* And then load the binary */
 	success = load(file_name, &_if); // f_name, if_.rip (function entry point), rsp(stack top : user stack)
@@ -390,11 +394,11 @@ void process_exit(void)
 	file_close(cur->run_file);
 	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
-	// process_cleanup (); 밑으로 위치 이동
+	// process_cleanup ();  // 밑으로 위치 이동
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up(&cur->wait_sema); // 현재가 자식 wait_sema up
-	sema_down(&cur->free_sema);
 	process_cleanup();
+	sema_down(&cur->free_sema);
 }
 
 /* Free the current process's resources. */
@@ -404,7 +408,10 @@ process_cleanup(void)
 	struct thread *curr = thread_current();
 
 #ifdef VM
-	supplemental_page_table_kill(&curr->spt);
+	// supplemental_page_table_kill(&curr->spt);
+	if(!hash_empty(&curr->spt.spt_hash)) {
+		supplemental_page_table_kill(&curr->spt);
+	}
 #endif
 
 	uint64_t *pml4;
@@ -494,9 +501,6 @@ struct ELF64_PHDR
 
 static bool setup_stack(struct intr_frame *if_);
 static bool validate_segment(const struct Phdr *, struct file *);
-static bool load_segment(struct file *file, off_t ofs, uint8_t *upage,
-						 uint32_t read_bytes, uint32_t zero_bytes,
-						 bool writable);
 
 // (arg_list, token_count, if_)
 void argument_stack(char **argv, int argc, struct intr_frame *if_)
@@ -779,7 +783,8 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 			palloc_free_page(kpage);
 			return false;
 		}
-		memset(kpage + page_read_bytes, 0, page_zero_bytes);
+		// kpage + page_read_bytes부터 page_zero_bytes만큼 값을 0으로 초기화
+		memset(kpage + page_read_bytes, 0, page_zero_bytes);	
 
 		/* Add the page to the process's address space. */
 		if (!install_page(upage, kpage, writable))
@@ -816,33 +821,16 @@ setup_stack(struct intr_frame *if_)
 	return success;
 }
 
-/* Adds a mapping from user virtual address UPAGE to kernel
- * virtual address KPAGE to the page table.
- * If WRITABLE is true, the user process may modify the page;
- * otherwise, it is read-only.
- * UPAGE must not already be mapped.
- * KPAGE should probably be a page obtained from the user pool
- * with palloc_get_page().
- * Returns true on success, false if UPAGE is already mapped or
- * if memory allocation fails. */
-static bool
-install_page(void *upage, void *kpage, bool writable)
-{
-	struct thread *t = thread_current();
 
-	/* Verify that there's not already a page at that virtual
-	 * address, then map our page there. */
-	return (pml4_get_page(t->pml4, upage) == NULL && pml4_set_page(t->pml4, upage, kpage, writable));
-}
 #else
 /* From here, codes will be used after project 3.
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool
+bool
 lazy_load_segment(struct page *page, void *aux)
-{ // 후반부(project3) 구현
-  //-------project3-memory_management-start--------------
+{	
+	//-------project3-memory_management-start--------------
 	struct frame *frame = page->frame;
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
@@ -852,13 +840,16 @@ lazy_load_segment(struct page *page, void *aux)
 	off_t offsetof = ((struct container *)aux)->offset;
 	size_t page_read_bytes = ((struct container *)aux)->page_read_bytes;
 	size_t page_zero_bytes = PGSIZE - page_read_bytes;
-	file_seek(file, offsetof); // 파일 읽을 위치 세팅
+	
+	file_seek(file, offsetof);	// 파일 읽을 위치 세팅
 	if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
 	{
-		palloc_free_page(frame->kva);
+		palloc_free_page(frame->kva);	// ?????????????
 		return false;
 	}
+	// frame->kva + page_read_bytes부터 page_zero_bytes만큼 값을 0으로 초기화
 	memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
+
 	return true;
 	//-------project3-memory_management-end----------------
 }
@@ -880,56 +871,49 @@ lazy_load_segment(struct page *page, void *aux)
 static bool
 load_segment(struct file *file, off_t ofs, uint8_t *upage,
 			 uint32_t read_bytes, uint32_t zero_bytes, bool writable)
-{ // 후반부(project3) 구현 -> 핵심을 수정해야 함
-	// vm_alloc_page_with_initializer를 호출하여 보류 중인 페이지 개체를 생성
+{ 	
+	//-------project3-memory_management-start--------------
+	// vm_alloc_page_with_initializer()를 호출하여 보류 중인 페이지 개체를 생성
 	// 페이지 폴트가 발생하면 세그먼트가 실제로 파일에서 로드되는 때임.
 	ASSERT((read_bytes + zero_bytes) % PGSIZE == 0);
 	ASSERT(pg_ofs(upage) == 0);
 	ASSERT(ofs % PGSIZE == 0);
 
-	/* upage 주소부터 1페이지 단위씩 UNINIT 페이지를 만들어 프로세스의 spt에 넣는다(vm_alloc_page_with_initializer).
-	이 때 각 페이지의 타입에 맞게 initializer도 맞춰준다. */
-	while (read_bytes > 0 || zero_bytes > 0)
-	{
+	while (read_bytes > 0 || zero_bytes > 0) {
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
 		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-		/* TODO: Set up aux( container로 대체 ) to pass information to the lazy_load_segment. */
-		// struct container *container;
-		// container = palloc_get_page(PAL_ZERO | PAL_USER);
-
-		// --------------------project3 Anonymous Page start---------
+		/* TODO: Set up aux to pass information to the lazy_load_segment. */
 		struct container *container = (struct container *)malloc(sizeof(struct container));
 		container->file = file;
 		container->page_read_bytes = page_read_bytes;
 		container->offset = ofs;
-		// container->writable = writable;
+		// void *aux = NULL:
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
-											writable, lazy_load_segment, container))
-			// lazy_load_segment는 load_segment 에 있는 vm_alloc_page_with_initializer의 네 번째 인자로서 제공됨.
+											writable, lazy_load_segment, container)) {
+			// vm_alloc_page_with_initializer: spt에 앞으로 사용할 page들(aux에 있음)을 추가해준다.
 			// vm_alloc_page_with_initializer의 5번째 인자인 aux는 load_segment에 설정한 정보
 			// 이 정보를 사용하여 세그먼트를 읽을 파일을 찾고 결국 세그먼트를 메모리로 읽어야 함
 			return false;
+		}
 
-		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
-		ofs += page_read_bytes;
+		ofs += page_read_bytes;	// 추가
 	}
 	return true;
 	// --------------------project3 Anonymous Page end---------
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-static bool
+bool  // 기존 앞에 static 붙어있었음.
 setup_stack(struct intr_frame *if_)
-{ // 후반부
-	// setup_stack을 조정해야 함
-	// 스택을 식별하는 방법
+{	
+	// 스택을 식별하는 방법을 제공해야 할 수도 있음
 	// vm/vm.h의 vm_type에 있는 보조 마커(예: VM_MARKER_0)를 사용하여 페이지를 표시할 수 있음
 
 	bool success = false;
@@ -952,7 +936,19 @@ setup_stack(struct intr_frame *if_)
 		}
 	}
 
-	// --------------------project3 Anonymous Page end---------
+	// --------------------project3 Anonymous Page start---------
+	//????????????
+	//vm_alloc_page를 통한 페이지 할당
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {    // type, upage, writable
+		success = vm_claim_page(stack_bottom);
+		if (success) {
+			if_->rsp = USER_STACK;
+            thread_current()->stack_bottom = stack_bottom;
+		}
+    }
+	// 마지막으로 spt_find_page를 통해 추가 페이지 테이블을 참조하여
+	//  오류가 발생한 주소에 해당하는 페이지 구조를 해결하도록
+	// vm_try_handle_fault 함수를 수정합니다.
 	return success;
 	/*   구현 후 스택의 모습
 		 ------------------------- <---- USER_STACK == if_->rsp
@@ -968,4 +964,26 @@ setup_stack(struct intr_frame *if_)
 // stack은 바로 사용하기 때문에 uninit page로 두지 않고 생성 후 바로 frame과 맵핑시켜준다.
 
 }
+
+/* Adds a mapping from user virtual address UPAGE to kernel
+ * virtual address KPAGE to the page table.
+ * If WRITABLE is true, the user process may modify the page;
+ * otherwise, it is read-only.
+ * UPAGE must not already be mapped.
+ * KPAGE should probably be a page obtained from the user pool
+ * with palloc_get_page().
+ * Returns true on success, false if UPAGE is already mapped or
+ * if memory allocation fails. */
+/* upage와 kpage를 연결한 정보를 페이지테이블(pml4)에 세팅함
+*/
+bool
+install_page(void *upage, void *kpage, bool writable)
+{
+	struct thread *t = thread_current();
+
+	/* Verify that there's not already a page at that virtual
+	 * address, then map our page there. */
+	return (pml4_get_page(t->pml4, upage) == NULL && pml4_set_page(t->pml4, upage, kpage, writable));
+}
+
 #endif /* VM */

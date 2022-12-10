@@ -6,12 +6,13 @@
 struct page;
 enum vm_type;
 
-
+//-------project3-memory_management-start--------------
 struct file_page {
 	// --------------------project3 Anonymous Page start---------
-
+	
 	// --------------------project3 Anonymous Page end---------
 };
+//-------project3-memory_management-end----------------
 
 
 void vm_file_init (void);

@@ -145,7 +145,7 @@ page_fault (struct intr_frame *f) {
 	if (vm_try_handle_fault (f, fault_addr, user, write, not_present))
 		return;
 #endif
-
+	exit(-1);
 	/* Count page faults. */
 	page_fault_cnt++;
 	/* If the fault is true fault, show info and exit. */
@@ -154,7 +154,7 @@ page_fault (struct intr_frame *f) {
 			not_present ? "not present" : "rights violation",
 			write ? "writing" : "reading",
 			user ? "user" : "kernel");
-	exit(-1);
-	// kill (f);
+
+	kill (f);
 }
 

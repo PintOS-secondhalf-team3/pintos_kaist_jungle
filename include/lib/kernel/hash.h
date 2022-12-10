@@ -61,7 +61,7 @@ typedef void hash_action_func (struct hash_elem *e, void *aux);
 
 
 /* Hash table. */
-// struct hash에는 직접 접근할 수 없기 때문에 필요시에는 hash table function과 macro를 사용한다.
+// struct hash에는 직접 접근할 수 없기 때문에, 필요시에는 hash table function과 macro를 사용한다. 
 // hash table은 struct hash_elem을 리스트의 인자로 가진다.
 struct hash {
 	size_t elem_cnt;            /* Number of elements in table. */
@@ -104,5 +104,7 @@ bool hash_empty (struct hash *);
 uint64_t hash_bytes (const void *, size_t);
 uint64_t hash_string (const char *);
 uint64_t hash_int (int);
-
+//-----------------------project3 anonymous page start------------------
+void hash_destructor(struct hash_elem *e, void* aux);
+//-----------------------project3 anonymous page end------------------
 #endif /* lib/kernel/hash.h */

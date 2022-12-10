@@ -44,30 +44,28 @@ struct thread;
  * DO NOT REMOVE/MODIFY PREDEFINED MEMBER OF THIS STRUCTURE. */
 struct page
 {
-
-	// 해당 operations는 page 구조체를 통해 언제든 요청 될 수 있음.
+	// 해당 operations는 page 구조체를 통해 언제든 요청 될 수 있음
 	const struct page_operations *operations;
 
-	void *va; /* Address in terms of user space */ // 유저 가상 주소
-	struct frame *frame;						   /* Back reference for frame */
+	void *va;			 /* Address in terms of user space */
+	struct frame *frame; /* Back reference for frame */
 
 	/* Your implementation */
-	// --------project3 Anonymous Page start-------
-	// spt테이블에서 페이지를 찾기 위해서 hash_elem 필요함.
-	// 이 hash_elem을 타고 struct page 로 가서 메타데이터를 알 수가 있다.
-	struct hash_elem hash_elem;
+	//-------project3-memory_management-start--------------
 
+	// spt에서 페이지를 찾기 위해서 hash_elem 필요함.
+	// 이 hash_elem을 타고 struct page로 가서 메타데이터를 알 수 있음
+	struct hash_elem hash_elem;
 	bool writable;	// wrtie 가능한지 여부
 	bool in_loaded; // ?????
 
-	// -------project3 Anonymous Page end-------
+	//-------project3-memory_management-end----------------
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
 	union
 	{
 		// page initialization
-		// 3가지 종류의 page가 있는 만큼 각각의 page 종류에 따라 다른 초기화가 필요
 
 		// page의 세 가지 종류
 		struct uninit_page uninit;
@@ -118,8 +116,8 @@ struct page_operations
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table
-{						   // page fault가 발생 -> 이런 상황 해결 -> page table보다 더 많은 정보를 담은 page table인 spt.
-	struct hash *spt_hash; // hash 자료구조 방식의 spt임
+{
+	struct hash spt_hash;
 };
 
 #include "threads/thread.h"
@@ -143,6 +141,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage,
 void vm_dealloc_page(struct page *page);
 bool vm_claim_page(void *va);
 enum vm_type page_get_type(struct page *page);
+
 bool page_less(const struct hash_elem *a_,
 			   const struct hash_elem *b_, void *aux UNUSED);
 

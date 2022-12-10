@@ -10,6 +10,7 @@
 
 #include "vm/vm.h"
 #include "vm/uninit.h"
+#include "threads/malloc.h"
 
 static bool uninit_initialize (struct page *page, void *kva);
 static void uninit_destroy (struct page *page);
@@ -27,7 +28,7 @@ static const struct page_operations uninit_ops = {
 };
 
 /* DO NOT MODIFY this function */
-// uninit_new 는 페이지 한개를 uninit으로 만들어서 spt에 올려두는 함수
+// uninit_new: uninit type의 page 1개를 만든다. 구조체에 전달받은 인자를 넘겨준다
 void
 uninit_new (struct page *page, void *va, vm_initializer *init,
 		enum vm_type type, void *aux,
@@ -39,19 +40,16 @@ uninit_new (struct page *page, void *va, vm_initializer *init,
 		.va = va,
 		.frame = NULL, /* no frame for now */
 		.uninit = (struct uninit_page) {
-			.init = init,
-			.type = type,
-			.aux = aux,
-			.page_initializer = initializer,
+			.init = init,					// lazy_load_segment
+			.type = type,					// VM_ANON or VM_FILE
+			.aux = aux,						// container
+			.page_initializer = initializer,// anon_initializer or file_backed_initializer
 		}
 	};
 }
 
 /* Initalize the page on first fault */
-
-// page initialization
-// Initializes the page on the first fault
-// 3가지 종류의 page가 있는 만큼 각각의 page 종류에 따라 다른 초기화가 필요
+/* 각각의 page 종류에 따라 다른 page initialize가 진행됨 */
 static bool
 uninit_initialize (struct page *page, void *kva) {
 	struct uninit_page *uninit = &page->uninit;
@@ -61,12 +59,10 @@ uninit_initialize (struct page *page, void *kva) {
 	vm_initializer *init = uninit->init;
 	void *aux = uninit->aux;
 
-	// 후반부
 	// enum vm_type type = uninit->type;
 
-
 	/* TODO: You may need to fix this function. */
-	// TYPE이 anon인 경우, page_initailizer: anon_initializer(), init : lazy_load_segment() 여기서 호출됨
+	// type이 anon인 경우, page_initializer: anon_initializer(), init: lazy_load_segment() 여기서 호출됨
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
 }
@@ -80,4 +76,5 @@ uninit_destroy (struct page *page) {
 	struct uninit_page *uninit UNUSED = &page->uninit;
 	/* TODO: Fill this function.
 	 * TODO: If you don't have anything to do, just return. */
+	// uninit->aux = NULL;
 }
