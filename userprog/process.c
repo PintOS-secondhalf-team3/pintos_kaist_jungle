@@ -397,8 +397,8 @@ void process_exit(void)
 	// process_cleanup ();  // 밑으로 위치 이동
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up(&cur->wait_sema); // 현재가 자식 wait_sema up
-	sema_down(&cur->free_sema);
 	process_cleanup();
+	sema_down(&cur->free_sema);
 }
 
 /* Free the current process's resources. */
@@ -840,16 +840,17 @@ lazy_load_segment(struct page *page, void *aux)
 	off_t offsetof = ((struct container *)aux)->offset;
 	size_t page_read_bytes = ((struct container *)aux)->page_read_bytes;
 	size_t page_zero_bytes = PGSIZE - page_read_bytes;
-	
+	// printf("=====================lazy_load_segment진입\n");
 	file_seek(file, offsetof);	// 파일 읽을 위치 세팅
 	if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
 	{
+		// printf("=====================lazy_load_segment에서 파일 읽기 실패\n");
 		palloc_free_page(frame->kva);	// ?????????????
 		return false;
 	}
 	// frame->kva + page_read_bytes부터 page_zero_bytes만큼 값을 0으로 초기화
 	memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
-
+	//printf("=====================lazy_load_segment성공\n");
 	return true;
 	//-------project3-memory_management-end----------------
 }
@@ -925,8 +926,10 @@ setup_stack(struct intr_frame *if_)
 	// --------------------project3 Anonymous Page start---------
 	//????????????
 	//vm_alloc_page를 통한 페이지 할당
+	printf("=====================setup_stack진입\n");
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {    // type, upage, writable
 		success = vm_claim_page(stack_bottom);
+		printf("=====================vm_alloc_page성공\n");
 		if (success) {
 			if_->rsp = USER_STACK;
             thread_current()->stack_bottom = stack_bottom;

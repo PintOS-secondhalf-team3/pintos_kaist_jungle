@@ -36,6 +36,8 @@ void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
+//void check_valid_buffer(void* buffer, unsigned size, bool to_write);
+struct page * check_address2(void *addr);
 
 struct lock filesys_lock;
 
@@ -83,26 +85,9 @@ void check_address(void *addr)
 	*/
 	if (!is_user_vaddr(addr) || addr == NULL || spt_find_page(&cur->spt, addr) == NULL)
 	{
-		exit(-1);
+		exit(-1);	/* 잘못된 접근일 경우 프로세스 종료 */
 	}
-	/* 잘못된 접근일 경우 프로세스 종료 */
-}
-
-struct page * check_address_prject3(void *addr){
-    if(is_kernel_vaddr(addr)){
-        exit(-1);
-    }
-    return spt_find_page(&thread_current()->spt,addr);
-}
-
-void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write){
-    for(int i=0; i<size; i++){
-        struct page* page = check_address_prject3(buffer + i);
-        if(page == NULL)
-            exit(-1);
-        if(to_write == true && page->writable == false)
-            exit(-1);
-    }
+	
 }
 
 /* The main system call interface */
@@ -131,11 +116,8 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = remove(f->R.rdi);
 			break;
 		case SYS_WRITE:
-		{
-			check_valid_buffer(f->R.rdi, f->R.rsi, f->R.rdx, 0);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
-		}
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
 			break;
@@ -157,11 +139,8 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
-		{
-			check_valid_buffer(f->R.rdi, f->R.rsi, f->R.rdx, 1);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
-		}
 		case SYS_SEEK:
 			seek(f->R.rdi, f->R.rsi);
 			break;
@@ -287,6 +266,9 @@ int write(int fd, const void *buffer, unsigned size)
 {
 	struct file *file = fd_to_file(fd);
 	check_address(buffer);
+	// --------------------project3 start----------------------
+	//check_valid_buffer(buffer, size, 1);
+	// --------------------project3 end------------------------
 	if (file == NULL)
 	{
 		return -1;
@@ -371,7 +353,10 @@ int read(int fd, void *buffer, unsigned size)
 	struct file *file = fd_to_file(fd);
 	// 버퍼의 처음 시작~ 끝 주소 check
 	check_address(buffer);
-	check_address(buffer + size - 1); // -1은 null 전까지만 유효하면 되서
+	check_address2(buffer + size - 1); // -1은 null 전까지만 유효하면 돼서
+	// --------------------project3 start----------------------
+	//check_valid_buffer(buffer, size, 0);
+	// --------------------project3 end------------------------
 	char *buf = buffer;
 	int read_size;
 
@@ -441,7 +426,7 @@ tell(int fd)
 	}
 	return file_tell(file);
 }
-
+// --------------------project3 start----------------------
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 
 	// 1. 파일 내용을 읽는 위치(커서)(offset)가 page-align되어야 함 -> struct file의 pos멤버
@@ -476,3 +461,24 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 void munmap (void *addr) {
 	do_munmap(addr);
 }
+
+struct page * check_address2(void *addr) {
+    if (is_kernel_vaddr(addr))
+    {
+        exit(-1);
+    }
+    return spt_find_page(&thread_current()->spt, addr);
+}
+/*
+void check_valid_buffer(void* buffer, unsigned size, bool to_write) {
+	for (int i = 0; i < size; i++) {
+		// 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
+        struct page* page = check_address2(buffer + i);    
+        if(page == NULL)
+            exit(-1);
+        if(to_write == true && page->writable == false)
+            exit(-1);
+    }
+}
+*/
+// --------------------project3 end-------------------------

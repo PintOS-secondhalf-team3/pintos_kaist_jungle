@@ -18,7 +18,9 @@ struct list_elem *start;
  * intialize codes. */
 void vm_init(void)
 {
+	printf("============================vm_init진입\n");
 	vm_anon_init();
+	printf("============================vm_init 성공\n");
 	vm_file_init();
 #ifdef EFILESYS /* For project 4 */
 	pagecache_init();
@@ -72,8 +74,6 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 	/* Check whether the upage is already occupied or not. */
 	if (spt_find_page(spt, upage) == NULL) // page fault나면(spt에 upage가 없으면) if문 진입
 	{
-		// 유저 페이지가 아직 없으니까 초기화를 해줘야 함
-
 		// TODO: Create the page, fetch the initialier according to the VM type
 		struct page *page = (struct page *)malloc(sizeof(struct page));
 		// initailizer의 타입을 맞춰줘야 uninit_new의 인자로 들어갈 수 있음
@@ -162,10 +162,11 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 
 /* Get the struct frame, that will be evicted. */
 static struct frame *
-vm_get_victim(void)
+vm_get_victim(void)//
 {
 
 	struct frame *victim = NULL;
+
 	/* TODO: The policy for eviction is up to you. */
 	struct thread* curr = thread_current();
 	struct list_elem* e = start;
@@ -200,7 +201,8 @@ vm_evict_frame(void)
 	// 이 victim과 연결된 가상 페이지를 swap_out()에 인자로 넣어준다.
 	swap_out(victim->page);
 	victim->page = NULL;
-	memset(victim->kva,0, PGSIZE); //?? -예린-
+
+	memset(victim->kva, 0, PGSIZE);
 
 	return victim;
 }
@@ -229,6 +231,7 @@ vm_get_frame (void) {
 		frame = vm_evict_frame(); // 새로운 프레임을 할당
 		//list_push_back(&frame_table, &frame->frame_elem);
 		//frame->page = NULL;
+
 		return frame;
 	}
 	list_push_back(&frame_table, &frame->frame_elem);	// frame table 리스트에 frame elem을 넣음

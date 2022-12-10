@@ -77,7 +77,7 @@ main (void) {
 	/* Break command line into arguments and parse options. */
 	argv = read_command_line ();
 	argv = parse_options (argv);
-
+	
 	/* Initialize ourselves as a thread so we can use locks,
 	   then enable console locking. */
 	thread_init (); // lock을 사용할 수 있도록 스레드를 초기화
