@@ -36,6 +36,7 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva)
 {
 	
 	/* Set up the handler */
+	// printf("file initializer 들어옴\n");
 	page->operations = &file_ops;
 	// printf("file init 중간\n");
 	struct file_page *file_page = &page->file;
@@ -48,9 +49,10 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva)
 static bool
 file_backed_swap_in(struct page *page, void *kva)
 {
+	printf("file swap in 들어옴\n");
 	struct file_page *file_page UNUSED = &page->file;
 
-	if (page==NULL) {	// page가 NULL이면 종료
+	if (page==NULL) {	// page가 NULL이면 종료 // 
 		return NULL;
 	}
 
@@ -89,6 +91,7 @@ file_backed_swap_in(struct page *page, void *kva)
 static bool
 file_backed_swap_out(struct page *page)
 {
+	printf("file swap out 들어옴\n");
 	struct file_page *file_page UNUSED = &page->file;
 
 	if (page==NULL) {	// page가 NULL이면 종료
@@ -104,6 +107,7 @@ file_backed_swap_out(struct page *page)
 	// page-frame 연결 해제
 	pml4_clear_page(thread_current()->pml4, page->va);
 
+	return true;
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -124,7 +128,6 @@ void *
 do_mmap(void *addr, size_t length, int writable,
 		struct file *file, off_t offset)
 {
-
 	/* reopen하는 이유: 
 	   file은 이미 open된 상태이며 우리는 그 file을 메모리에 올려주는 작업을 함.
 	   만약 우리가 file에 수정을 하는 작업 도중에 file이 close 되어버렸다면, 수정사항이 disk에 반영되지 않음
