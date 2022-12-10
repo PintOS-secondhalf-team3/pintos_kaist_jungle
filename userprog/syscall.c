@@ -66,7 +66,7 @@ void syscall_init(void)
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인 하는 함수
 Pintos에서는 시스템 콜이 접근할 수 있는 주소를 0x8048000~0xc0000000으로 제한함
 유저 영역을 벗어난 영역일 경우 프로세스 종료(exit(-1)) */
-void check_address(void *addr)
+struct page check_address(void *addr)
 {
 	struct thread *cur = thread_current();
 	/* 1. 포인터가 가리키는 주소가 유저영역의 주소인지 확인 */
