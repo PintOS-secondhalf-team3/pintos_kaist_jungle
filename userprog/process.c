@@ -929,8 +929,9 @@ static bool
 setup_stack(struct intr_frame *if_)
 { // 후반부
 	// setup_stack을 조정해야 함
-	// 스택을 식별하는 방법을 제공해야 할 수도 있음
+	// 스택을 식별하는 방법
 	// vm/vm.h의 vm_type에 있는 보조 마커(예: VM_MARKER_0)를 사용하여 페이지를 표시할 수 있음
+
 	bool success = false;
 	void *stack_bottom = (void *)(((uint8_t *)USER_STACK) - PGSIZE);
 
@@ -938,10 +939,33 @@ setup_stack(struct intr_frame *if_)
 	 * TODO: If success, set the rsp accordingly.
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
+	// --------------------project3 Anonymous Page start---------
+	// ANON 페이지로 만들 UNINIT 페이지를 stack_bottom에서 위로 PGSIZE만큼( 1 page ) 만든다.
+	// 이 때 TYPE에 VM_MARKER_0 flag를 추가함으로써 이 페이지가 STACK에 있다는 것을 표시.
+	if (vm_alloc_page_with_initializer(VM_ANON | VM_MARKER_0, stack_bottom, 1,NULL,NULL))
+	{ // type, upage, writable
+		success = vm_claim_page(stack_bottom);
+		if (success)
+		{
+			if_->rsp = USER_STACK;
+			thread_current()->stack_bottom = stack_bottom;
+		}
+	}
 
-	// 마지막으로 spt_find_page를 통해 추가 페이지 테이블을 참조하여
-	//  오류가 발생한 주소에 해당하는 페이지 구조를 해결하도록
-	// vm_try_handle_fault 함수를 수정합니다.
+	// --------------------project3 Anonymous Page end---------
 	return success;
+	/*   구현 후 스택의 모습
+		 ------------------------- <---- USER_STACK == if_->rsp
+		 |                       |
+		 |       NEW PAGE        |
+		 |                       |
+		 |                       |
+		 ------------------------- <---- stack_bottom
+*/
+// 왜 스택은 lazy loading을 하지 않고 바로 물리메모리와 맵핑해 주는 것인가??
+
+// setup stack 이후 파일 실행에 필요한 argument를 바로 stack에 넣어 주어야한다.
+// stack은 바로 사용하기 때문에 uninit page로 두지 않고 생성 후 바로 frame과 맵핑시켜준다.
+
 }
 #endif /* VM */

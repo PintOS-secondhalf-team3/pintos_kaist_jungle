@@ -72,12 +72,16 @@ void check_address(void *addr)
 	/* 1. 포인터가 가리키는 주소가 유저영역의 주소인지 확인 */
 	/* 2. 포인터가 가리키는 주소가 존재하는지 확인 */
 	/* 3. 포인터가 가리키는 주소에 해당하는 실주소가 없는 경우 NULL 반환 */
-	// || pml4_get_page(cur->pml4, addr) == NULL
-	if (!is_user_vaddr(addr) || addr == NULL || pml4_get_page(cur->pml4, addr) == NULL)
+	// || pml4_get_page(cur->pml4, addr) == NULL ( 프로젝트 3 구현하면서 조건에서 제외함 )
+	if (!is_user_vaddr(addr) || addr == NULL)
 	{
 		exit(-1);
 	}
-	/* 잘못된 접근일 경우 프로세스 종료 */
+	// ------------project3 Anonymous start ---------
+	/* 유저 가상 주소면 SPT에서 페이지 찾아서 리턴 */ 
+	return spt_find_page(&thread_current()->spt, addr);
+	// ------------project3 Anonymous end ---------
+
 }
 
 /* The main system call interface */
@@ -236,7 +240,6 @@ int open(const char *file)
 	{ // fd table 가득 찼다면
 		file_close(open_file);
 	}
-
 
 	return fd;
 }

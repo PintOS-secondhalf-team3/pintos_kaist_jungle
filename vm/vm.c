@@ -130,7 +130,7 @@ page_lookup(const void *address)
 	// hash_find : 가상 주소를 기반으로 페이지를 찾고 반환하는 함수
 	// 주어진 element와 같은 element가 hash안에 있는지 탐색
 	// 성공하면 해당 element를, 실패하면 null 포인터로 반환
-	e = hash_find(&thread_current()->spt->spt_hash, &p->hash_elem); // 해시 테이블에서 요소 검색한다.
+	e = hash_find(&thread_current()->spt.spt_hash, &p->hash_elem); // 해시 테이블에서 요소 검색한다.
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
@@ -265,99 +265,98 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
 	return false;
 	// --------------------project3 Anonymous Page end---------
 	// return vm_do_claim_page (page);  //기존 코드
+}
+/* Free the page.
+ * DO NOT MODIFY THIS FUNCTION. */
+void vm_dealloc_page(struct page *page)
+{
+	destroy(page);
+	free(page);
+}
 
-	/* Free the page.
-	 * DO NOT MODIFY THIS FUNCTION. */
-	void vm_dealloc_page(struct page * page)
+//-------project3-memory_management-start--------------
+
+/* Claim the page that allocate on VA. */
+// 할당할 페이지를 요청함.
+bool vm_claim_page(void *va UNUSED)
+{
+	struct page *page = NULL;
+	struct thread *curr = thread_current();
+	/* TODO: Fill this function */
+	page = spt_find_page(&curr->spt, va); // 먼저 페이지를 가져온다.
+
+	if (page == NULL)
 	{
-		destroy(page);
-		free(page);
-	}
-
-	//-------project3-memory_management-start--------------
-
-	/* Claim the page that allocate on VA. */
-	// 할당할 페이지를 요청함.
-	bool vm_claim_page(void *va UNUSED)
-	{
-		struct page *page = NULL;
-		struct thread *curr = thread_current();
-		/* TODO: Fill this function */
-		page = spt_find_page(&curr->spt, va); // 먼저 페이지를 가져온다.
-
-		if (page == NULL)
-		{
-			return false;
-		}
-		return vm_do_claim_page(page); // 해당 페이지와 함께 vm_do_claim_page를 호출
-	}
-
-	/* Claim the PAGE and set up the mmu. */
-	/* claim : 물리 프레임을 페이지에 할당하는 것
-	   vm_get_frame()을 호출하여 frame을 얻고 MMU를 설정
-	*/
-	static bool vm_do_claim_page(struct page * page)
-	{ // 가상 주소와 물리 주소 매핑( 성공, 실패 여부 리턴)
-		struct frame *frame = vm_get_frame();
-		/* Set links */
-		frame->page = page;
-		page->frame = frame;
-
-		/* TODO: Insert page table entry to map page's VA to frame's PA. */
-		// install_page: page와 frame의 연결정보를 pml4에 추가하는 함수
-		// 페이지테이블에 frame과 page의 연결을 추가
-		if (install_page(page->va, frame->kva, page->writable))
-		{
-			// swap in: disk(swap area)에서 메모리로 데이터 가져옴
-			// page fault 나고 swap_in 실행 시 uninit_initializer가 실행됨
-			// uninit_initalizer에서 init에 있던 lazy_load_segment 호출되고, type에 맞는 initializer 호출됨
-			return swap_in(page, frame->kva);
-		}
 		return false;
 	}
-	//-------project3-memory_management-end----------------
+	return vm_do_claim_page(page); // 해당 페이지와 함께 vm_do_claim_page를 호출
+}
 
-	/* Initialize new supplemental page table */
-	void supplemental_page_table_init(struct supplemental_page_table * spt UNUSED)
+/* Claim the PAGE and set up the mmu. */
+/* claim : 물리 프레임을 페이지에 할당하는 것
+   vm_get_frame()을 호출하여 frame을 얻고 MMU를 설정
+*/
+static bool vm_do_claim_page(struct page *page)
+{ // 가상 주소와 물리 주소 매핑( 성공, 실패 여부 리턴)
+	struct frame *frame = vm_get_frame();
+	/* Set links */
+	frame->page = page;
+	page->frame = frame;
+
+	/* TODO: Insert page table entry to map page's VA to frame's PA. */
+	// install_page: page와 frame의 연결정보를 pml4에 추가하는 함수
+	// 페이지테이블에 frame과 page의 연결을 추가
+	if (install_page(page->va, frame->kva, page->writable))
 	{
-		//-------project3-memory_management-start--------------
-		hash_init(&spt->spt_hash, page_hash, page_less, NULL); // 해시테이블 초기화
-		//-------project3-memory_management-end--------------
-
+		// swap in: disk(swap area)에서 메모리로 데이터 가져옴
+		// page fault 나고 swap_in 실행 시 uninit_initializer가 실행됨
+		// uninit_initalizer에서 init에 있던 lazy_load_segment 호출되고, type에 맞는 initializer 호출됨
+		return swap_in(page, frame->kva);
 	}
+	return false;
+}
+//-------project3-memory_management-end----------------
 
-	/* Copy supplemental page table from src to dst */
-	/* src spt를 dst spt에 복사한다.*/
-	bool supplemental_page_table_copy(struct supplemental_page_table * dst UNUSED,
-									  struct supplemental_page_table * src UNUSED)
-	{
-	}
+/* Initialize new supplemental page table */
+void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
+{
+	//-------project3-memory_management-start--------------
+	hash_init(&spt->spt_hash, page_hash, page_less, NULL); // 해시테이블 초기화
+														   //-------project3-memory_management-end--------------
+}
 
-	/* Free the resource hold by the supplemental page table */
-	void supplemental_page_table_kill(struct supplemental_page_table * spt UNUSED)
-	{
-		/* TODO: Destroy all the supplemental_page_table hold by thread and
-		 * TODO: writeback all the modified contents to the storage. */
-	}
+/* Copy supplemental page table from src to dst */
+/* src spt를 dst spt에 복사한다.*/
+bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
+								  struct supplemental_page_table *src UNUSED)
+{
+}
 
-	/* Returns a hash value for page p. */
-	// hash 테이블 자료구조에서 key 값을 받아 bucket 안의 index로 변형시키는 function
-	unsigned
-	page_hash(const struct hash_elem *p_, void *aux UNUSED)
-	{
-		const struct page *p = hash_entry(p_, struct page, hash_elem);
-		return hash_bytes(&p->va, sizeof p->va);
-		// hash_bytes : buf에서 시작하는 크기 바이트의 해시를 반환함
-	}
+/* Free the resource hold by the supplemental page table */
+void supplemental_page_table_kill(struct supplemental_page_table *spt UNUSED)
+{
+	/* TODO: Destroy all the supplemental_page_table hold by thread and
+	 * TODO: writeback all the modified contents to the storage. */
+}
 
-	/* Returns true if page a precedes page b. */
-	// hash 자료구조에서 elem들의 값을 비교해 a, b중 a가 더 작은지 아닌지를 return하는 함수
-	// a가 b보다 작으면 true, 반대면 false
-	bool page_less(const struct hash_elem *a_,
-				   const struct hash_elem *b_, void *aux UNUSED)
-	{
-		const struct page *a = hash_entry(a_, struct page, hash_elem);
-		const struct page *b = hash_entry(b_, struct page, hash_elem);
+/* Returns a hash value for page p. */
+// hash 테이블 자료구조에서 key 값을 받아 bucket 안의 index로 변형시키는 function
+unsigned
+page_hash(const struct hash_elem *p_, void *aux UNUSED)
+{
+	const struct page *p = hash_entry(p_, struct page, hash_elem);
+	return hash_bytes(&p->va, sizeof p->va);
+	// hash_bytes : buf에서 시작하는 크기 바이트의 해시를 반환함
+}
 
-		return a->va < b->va;
-	}
+/* Returns true if page a precedes page b. */
+// hash 자료구조에서 elem들의 값을 비교해 a, b중 a가 더 작은지 아닌지를 return하는 함수
+// a가 b보다 작으면 true, 반대면 false
+bool page_less(const struct hash_elem *a_,
+			   const struct hash_elem *b_, void *aux UNUSED)
+{
+	const struct page *a = hash_entry(a_, struct page, hash_elem);
+	const struct page *b = hash_entry(b_, struct page, hash_elem);
+
+	return a->va < b->va;
+}
