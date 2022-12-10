@@ -39,6 +39,8 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva)
 	page->operations = &file_ops;
 	// printf("file init 중간\n");
 	struct file_page *file_page = &page->file;
+
+	return true;
 	
 }
 
