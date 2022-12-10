@@ -53,7 +53,7 @@ bool anon_initializer(struct page *page, enum vm_type type, void *kva)
 	ANON page를 초기화해주기 위해 해당 데이터를 모두 0으로 초기화해준다.
 Q. 이렇게 하면 Union 영역은 모두 다 0으로 초기화되나? -> 그렇다. */
 	struct uninit_page *uninit = &page->uninit;
-	memset(uninit, 0, sizeof(struct uninit_page));
+	memset(uninit, 0, sizeof(struct uninit_page)); // // 12/10 15:42 수정
 	//-------project3-swap in/out end----------------
 	page->operations = &anon_ops;
 
@@ -99,26 +99,34 @@ anon_swap_out(struct page *page)
 	// printf("anon swap out\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
-	// bitmap값이 0인 page를 찾는다.
-	size_t bitmap_idx = bitmap_scan(swap_table, 0, 1, false); // bitmap_idx = slot_no
+	/* 비트맵을 처음부터 순회해 false 값을 가진 비트를 하나 찾는다.
+	   즉, 페이지를 할당받을 수 있는 swap slot을 하나 찾는다. */
+	int bitmap_idx = bitmap_scan(swap_table, 0, 1, false); // bitmap_idx = slot_no
 	if (bitmap_idx == BITMAP_ERROR)
 	{
 		return false; // 찾지 못한 경우
 	}
 
 	// disk에 변경사항 write해줌, 1page = 8sector = 8slot
+	// 한 페이지를 디스크에 써 주기 위해 SECTORS_PER_PAGE개의 섹터에 저장해야 한다.
+	// 이 때 디스크에 각 섹터의 크기 DISK_SECTOR_SIZE만큼 써 준다.
 	for (int i = 0; i < SECTORS_PER_PAGE; i++)
 	{
 		// DISK_SECTOR_SIZE = 512 = 1섹터의 크기가 512bytes이기 때문
 		disk_write(swap_disk, bitmap_idx * SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE * i);
 	}
 
+	// swap table의 해당 페이지에 대한 swap slot의 비트를 true로 바꿔주고
+	// 해당 페이지의 PTE에서 Present bit을 0으로 바꿔준다.
+	// 이제 프로세스가 이 페이지에 접근하면 Page fault가 뜬다.
 	bitmap_set(swap_table, bitmap_idx, true); // bitmap을 다시 true로 세팅
 	// bitmap_flip(swap_table, bitmap_idx);
 
 	pml4_clear_page(thread_current()->pml4, page->va); // pml4에서 삭제
 
 	// anon_page구조체에 page위치 저장
+	// 페이지의 swap_index 값을 이 페이지가 저장된 swap slot의 번호로 써 준다.
+	// why ? ->이 페이지가 디스크의 스왑 영역 중 어디에 swap 되었는지를 확인할 수 있도록 한다.
 	anon_page->swap_index = bitmap_idx;
 
 	return true;
