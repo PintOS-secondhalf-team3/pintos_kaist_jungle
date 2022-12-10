@@ -206,8 +206,10 @@ vm_get_frame (void) {
 
 	if (frame->kva == NULL) // 유저 풀 공간이 하나도 없다면
 	{
-		// printf("============evict해야함\n");
+		printf("============evict해야함\n");
 		frame = vm_evict_frame(); // 새로운 프레임을 할당
+		printf("============frame받아왔음\n");
+		frame->page = NULL;
 		return frame;
 	}
 	list_push_back(&frame_table, &frame->frame_elem);	// frame table 리스트에 frame elem을 넣음
@@ -245,7 +247,7 @@ vm_handle_wp(struct page *page UNUSED)
 // 접근 하는데 실제로는 원하는 데이터가 물리 메모리에 load 혹은 저장되어있지 않을 경우 발생함
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 { 	
-	// printf("try handle 들어옴\n");
+	printf("try handle 들어옴\n");
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
