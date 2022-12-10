@@ -24,6 +24,7 @@
         "malloc.h": "c",
         "inspect.h": "c",
         "uninit.h": "c",
-        "bitmap.h": "c"
+        "bitmap.h": "c",
+        "list.h": "c"
     }
 }
