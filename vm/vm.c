@@ -10,6 +10,7 @@
 
 //-------project3-memory_management-start--------------
 struct list frame_table;	// frame_table을 전역으로 선언함
+struct list_elem *start;	// frame_table의 시작 elem
 //-------project3-memory_management-end----------------
 
 /* Initializes the virtual memory subsystem by invoking
@@ -26,8 +27,7 @@ void vm_init(void)
 	/* TODO: Your code goes here. */
 	list_init(&frame_table); // frame_table 리스트를 초기화
 
-	// heesan 왜 여기서 start에 frame_table의 첫 요소를 할당해주었는가?????
-	struct list_elem *start = list_begin(&frame_table);
+	// struct list_elem *start = list_begin(&frame_table);	// frame table의 시작 elem
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -85,14 +85,15 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 			case VM_FILE:
 				initializer = file_backed_initializer;
 				break;
-			// default:
-			// 	break;
+			default:
+				break;
 		}
 		// TODO: and then create "uninit" page struct by calling uninit_new.
 		// TODO: should modify the field after calling the uninit_new.
 		// uninit_new에게 인자로 받아온 type에 따라 다른 인자들을 넘겨주어, page 구조체에 넣는다.
 		uninit_new(page, upage, init, type, aux, initializer);
 		page->writable = writable;
+		
 		// TODO: Insert the page into the spt.
 		return spt_insert_page(spt, page);	// spt에 page를 넣는다
 	}
@@ -130,6 +131,9 @@ page_lookup(const void *address)
 	// 주어진 element와 같은 element가 hash안에 있는지 탐색
 	// 성공하면 해당 element를, 실패하면 null 포인터로 반환
 	e = hash_find(&thread_current()->spt.spt_hash, &p->hash_elem); // 해시 테이블에서 요소 검색한다.
+	
+	free(p);	// 찾고 나면 이제 필요없음, p는 temp느낌
+
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
 }
 
@@ -147,6 +151,20 @@ bool spt_insert_page(struct supplemental_page_table *spt UNUSED, struct page *pa
 	}
 	return false;
 }
+// 추가
+bool spt_delete_page(struct supplemental_page_table *spt, struct page *page)
+{ // 인자로 주어진 page를 spt에 넣는 함수. 이미 spt에 있는 page인지도 검증해야 함.
+	/* TODO: Fill this function. */
+
+	// hash_insert: spt에 page를 새로 넣었으면 NULL 반환, 
+	// 이미 spt에 page가 존재한다면 해당 page의 hash_elem을 반환
+	if (hash_delete(&spt->spt_hash, &page->hash_elem) == NULL){
+		return true;
+	}
+	return false;
+}
+
+
 //-------project3-memory_management-end----------------
 
 
@@ -156,32 +174,99 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 	return true;
 }
 
+
+
 /* Get the struct frame, that will be evicted. */
 static struct frame *
-vm_get_victim(void)//
+vm_get_victim(void)
 {
-	// struct frame *victim = NULL;
+	struct frame *victim = NULL;
 	/* TODO: The policy for eviction is up to you. */
-	struct list_elem* victim_elem = list_pop_front(&frame_table);
-	struct frame* victim = list_entry(victim_elem, struct frame, frame_elem);
+	// struct list_elem* victim_elem = list_pop_front(&frame_table);
+	// struct frame* victim = list_entry(victim_elem, struct frame, frame_elem);
+
+	// 내가만든 clock정책
+	struct thread *curr = thread_current();
+    struct list_elem *e = start;
+    for (start = e; start != list_end(&frame_table); start = list_next(start)) {
+		// printf("첫번째 for문\n");
+        victim = list_entry(start, struct frame, frame_elem);
+		// printf("list entry에서 안죽음\n");
+        // printf("[DEBUG]is_empty: %d\n", list_empty(&frame_table));
+        // printf("[DEBUG]victim: %p\n", victim);
+		bool succ = pml4_is_accessed(curr->pml4, victim->page->va);
+        // printf("[DEBUG]succ: %d\n", succ);
+		
+		if (succ) {
+            pml4_set_accessed (curr->pml4, victim->page->va, 0);
+		}	
+        else {
+			// printf("return victim\n");
+            return victim;
+		}
+    }
+	// printf("첫번째 for문 끝낫다\n");
+
+    for (start = list_begin(&frame_table); start != e; start = list_next(start)) {
+        victim = list_entry(start, struct frame, frame_elem);
+        if (pml4_is_accessed(curr->pml4, victim->page->va))
+            pml4_set_accessed (curr->pml4, victim->page->va, 0);
+        else
+            return victim;
+    }
 
 	return victim;
 }
+
+//////////////////////////
+// void list_clock_next(struct list *l)
+// {
+// 	clock_ptr = clock_ptr->next;
+// 	if (list_tail(l) == clock_ptr)
+// 		clock_ptr = list_begin(l);
+// }
+
+// static struct frame *vm_get_victim(void)
+// {
+// 	struct thread *curr = thread_current();
+// 	struct frame *victim = NULL;
+// 	/* TODO: The policy for eviction is up to you. */
+
+// 	while (1)
+// 	{
+// 		list_clock_next(&frame_table);
+// 		victim = list_entry(clock_ptr, struct frame, elem);
+
+// 		if (pml4_is_accessed(victim->pml4, victim->page->va))
+// 		{
+// 			pml4_set_accessed(victim->pml4, victim->page->va, false);
+// 			continue;
+// 		}
+
+// 		break;
+// 	}
+
+// 	return victim;
+// }
+///////////////////
 
 /* Evict one page and return the corresponding frame.
  * Return NULL on error.*/
 static struct frame *
 vm_evict_frame(void)
 {
+	// printf("getvictim 앞\n");
 	struct frame *victim UNUSED = vm_get_victim();
+	// printf("getvictim 뒤\n");
 	/* TODO: swap out the victim and return the evicted frame. */
 	// 비우고자 하는 해당 프레임을 victim이라 하고, 
 	// 이 victim과 연결된 가상 페이지를 swap_out()에 인자로 넣어준다.
 	// printf("---------swap out 전 victim: %d\n", victim->page->operations->type);
 	// printf("---------swap out 전 victim: %d\n", victim->page->operations->type);
 	swap_out(victim->page);
+
 	victim->page = NULL;
-	memset(victim->kva, 0, PGSIZE);
+	// memset(victim->kva, 0, PGSIZE);
 
 	return victim;
 }
@@ -207,10 +292,13 @@ vm_get_frame (void) {
 
 	if (frame->kva == NULL) // 유저 풀 공간이 하나도 없다면
 	{
+		// printf("---evict frame 앞\n");
 		frame = vm_evict_frame(); // 새로운 프레임을 할당
+		// printf("---evict frame 뒤\n");
 		return frame;
 	}
 	list_push_back(&frame_table, &frame->frame_elem);	// frame table 리스트에 frame elem을 넣음
+	start = &frame->frame_elem;
 
 	frame->page = NULL;	// frame의 page멤버 초기화
 	ASSERT(frame != NULL);
@@ -224,12 +312,11 @@ vm_get_frame (void) {
 static void
 vm_stack_growth(void *addr UNUSED)
 {
-	void* stack_va = pg_round_down(addr);
-	void* stack_bottom = thread_current()->stack_bottom;
+	// void* stack_va = pg_round_down(addr);
 	
 	// 페이지 할당받기 
-	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_va, 1)) {    // type, upage, writable
-		vm_claim_page(stack_va);	// 페이지 claim
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1)) {    // type, upage, writable
+		vm_claim_page(addr);	// 페이지 claim
 		thread_current()->stack_bottom -= PGSIZE;
     }
 }
@@ -253,18 +340,17 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
 
 	// --------------------project3 Anonymous Page start---------
 	// 먼저 유효한 page fault인지 확인
-	if (is_kernel_vaddr(addr)) {
+	if (is_kernel_vaddr(addr) || addr == NULL) {
         return false;
 	}
-
-	// 커널이면 thread구조체의 rsp_stack을, 유저면 interrupt frame의 rsp를 사용함
-    void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
     if (not_present){
-        if (!vm_claim_page(addr)) {	// page를 새로 할당받지 못하는 경우 진입
+		// 커널이면 thread구조체의 rsp_stack을, 유저면 interrupt frame의 rsp를 사용함
+   	 	void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
 
+        if (!vm_claim_page(addr)) {	// page를 새로 할당받지 못하는 경우 진입
 			// 유저 스택영역에 접근하는 경우임, 참고: 0x100000 = 2^20 = 1MB 
             if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) { 
-                vm_stack_growth(thread_current()->stack_bottom - PGSIZE);
+                vm_stack_growth(pg_round_down(addr));	
                 return true;
             }
             return false;
@@ -390,6 +476,16 @@ supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
 	//----------------------------project3 anonymous page start-----------
+	// munmap도 해줘야 한다. // ?????************
+	struct hash_iterator i;
+	hash_first(&i, &spt->spt_hash);
+	while(hash_next(&i)) {
+		struct page *target = hash_entry(hash_cur(&i), struct page, hash_elem);
+		if(target->operations->type == VM_FILE) {
+			do_munmap(target->va);
+		}
+	}
+
 	hash_destroy(&spt->spt_hash, hash_destructor);
 	//----------------------------project3 anonymous page end-----------
 

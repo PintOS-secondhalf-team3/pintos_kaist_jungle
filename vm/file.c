@@ -62,7 +62,7 @@ file_backed_swap_in(struct page *page, void *kva)
 	size_t page_zero_bytes = PGSIZE - page_read_bytes;
 	
 	// file에서 frame으로(kva통해서) read하기
-	if(file_read_at(file, kva, page_read_bytes, offsetof) != page_read_bytes) {
+	if(file_read_at(file, kva, page_read_bytes, offsetof) != (int)page_read_bytes) {
 		return false;
 	}
 	memset(kva + page_read_bytes, 0, page_zero_bytes);
@@ -104,7 +104,7 @@ file_backed_swap_out(struct page *page)
 	}
 	// page-frame 연결 해제
 	pml4_clear_page(thread_current()->pml4, page->va);
-
+	return true;
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -198,7 +198,7 @@ void do_munmap(void *addr)
 		if (page==NULL) {	// page가 NULL이면 종료
 			return NULL;
 		}
-		struct container *container = page->uninit.aux;	// page에서 container 가져옴
+		struct container *container = (struct container *)page->uninit.aux;	// page에서 container 가져옴
 		
 		// dirty bit가 1이라면(수정했다면) if문 진입 + writable이라면
 		if (pml4_is_dirty(thread_current()->pml4, page->va) && (page->writable == 1)) {	

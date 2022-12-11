@@ -23,6 +23,7 @@
 #include "vm/vm.h"
 // --------------------project3 Anonymous Page start---------
 #include "vm/file.h"
+
 // --------------------project3 Anonymous Page end---------
 #endif
 
@@ -394,10 +395,10 @@ void process_exit(void)
 	file_close(cur->run_file);
 	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
-	// process_cleanup ();  // 밑으로 위치 이동
+	process_cleanup ();  // 밑으로 위치 이동
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up(&cur->wait_sema); // 현재가 자식 wait_sema up
-	process_cleanup();
+	// process_cleanup();
 	sema_down(&cur->free_sema);
 }
 
@@ -849,6 +850,7 @@ lazy_load_segment(struct page *page, void *aux)
 	}
 	// frame->kva + page_read_bytes부터 page_zero_bytes만큼 값을 0으로 초기화
 	memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
+	file_seek(file, offsetof);	// pos 업데이트
 
 	return true;
 	//-------project3-memory_management-end----------------
@@ -923,7 +925,6 @@ setup_stack(struct intr_frame *if_)
 	/* TODO: Your code goes here */
 
 	// --------------------project3 Anonymous Page start---------
-	//????????????
 	//vm_alloc_page를 통한 페이지 할당
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {    // type, upage, writable
 		success = vm_claim_page(stack_bottom);
