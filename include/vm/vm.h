@@ -56,7 +56,7 @@ struct page
 	// spt에서 페이지를 찾기 위해서 hash_elem 필요함.
 	// 이 hash_elem을 타고 struct page로 가서 메타데이터를 알 수 있음
 	struct hash_elem hash_elem;
-	bool writable;	// wrtie 가능한지 여부
+	bool writable;	// write 가능한지 여부?? (맞나..)
 	bool in_loaded; // ?????
 
 	//-------project3-memory_management-end----------------

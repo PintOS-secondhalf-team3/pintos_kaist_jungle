@@ -143,6 +143,8 @@ do_mmap(void *addr, size_t length, int writable,
 	   만약 우리가 file에 수정을 하는 작업 도중에 file이 close 되어버렸다면, 수정사항이 disk에 반영되지 않음
 	   따라서 mmap이 실행되고 munmap이 실행되기 전까지 같은 inode를 가진 새로운 file 구조체 만들어서
 	   이를 open하는 것임
+	   ->파일을 close하거나 remove해도 매핑된 것이 해제되지 않는다. 일단 매핑이 되면 munmmap()이 호출되거나 프로세스가 종료될 때까지 유효하다. 
+	   file_reopen() 함수를 사용하여 파일의 각각 매핑에 대해 분리되고 독립적인 참조를 얻어야 한다.
 	*/
 	struct file *mfile = file_reopen(file);
 	void *start_addr = addr; // 시작 주소
@@ -211,12 +213,14 @@ void do_munmap(void *addr)
 		struct page *page = spt_find_page(&thread_current()->spt, addr);
 		if (page == NULL)
 		{ // page가 NULL이면 종료
-			return NULL;
+			break;
 		}
-		struct container *container = page->uninit.aux; // page에서 container 가져옴
+		struct container *container = (struct container *)page->uninit.aux; // page에서 container 가져옴
 
-		// dirty bit가 1이라면(수정했다면) if문 진입 + writable이라면
-		if (pml4_is_dirty(thread_current()->pml4, page->va) && (page->writable == 1))
+		// dirty bit가 1이라면(사용되었다면) if문 진입 + writable이라면
+		// 12/11 수정 pml4_is_dirty 조건에  && (page->writable == 1) 제거
+
+		if (pml4_is_dirty(thread_current()->pml4, page->va))
 		{
 			// addr(메모리)에 적힌 내용을 file에 덮어쓰기
 			file_write_at(container->file, addr, container->page_read_bytes, container->offset);

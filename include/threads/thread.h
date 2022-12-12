@@ -116,10 +116,10 @@ struct thread
 	struct supplemental_page_table spt;
 
 	// --------------------project3 Anonymous Page start---------
-	void* stack_bottom;
-	void* rsp_stack;
-	void* mmap_addr;	// munmap 확인용
-	// --------------------project3 Anonymous Page end---------
+	void *stack_bottom;
+	void *rsp_stack;
+	void *mmap_addr; // munmap 할 때 필요한 do mmap의 시작주소(유저스택의 주소)
+					 // --------------------project3 Anonymous Page end---------
 #endif
 
 	/* Owned by thread.c. */

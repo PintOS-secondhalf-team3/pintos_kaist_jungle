@@ -12,6 +12,8 @@ static struct disk *swap_disk;
 // 여기 스왑 테이블의 경우 각각의 비트는 스왑 슬롯 각각과 매칭된다.
 // 스왑 테이블에서 해당 스왑 슬롯에 해당하는 비트가 1이라는 말은 그에
 // 대응되는 페이지가 swap out되어 디스크의 스왑 공간에 임시적으로 저장되었다는 뜻이다.
+// swap table은 swap disk에서 사용 가능한 영역과 사용 중인 영역을 구분하기 위한 테이블로, 비트맵 형식으로 구현한다.
+// bitmap으로 해당 정보를 구현시 1bit면 정보를 표시할 수 있기에 간단하게 구현이 가능하다.
 struct bitmap *swap_table;
 //-------project3-swap in out end----------------
 static bool anon_swap_in(struct page *page, void *kva);
