@@ -38,6 +38,7 @@ void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
 //void check_valid_buffer(void* buffer, unsigned size, bool to_write);
 struct page * check_address2(void *addr);
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
 
 struct lock filesys_lock;
 
@@ -116,8 +117,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = remove(f->R.rdi);
 			break;
 		case SYS_WRITE:
+		{
+			//check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		}
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
 			break;
@@ -139,8 +143,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
+		{
+			//check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		}
 		case SYS_SEEK:
 			seek(f->R.rdi, f->R.rsi);
 			break;
@@ -267,7 +274,7 @@ int write(int fd, const void *buffer, unsigned size)
 	struct file *file = fd_to_file(fd);
 	check_address(buffer);
 	// --------------------project3 start----------------------
-	//check_valid_buffer(buffer, size, 1);
+	// check_valid_buffer(buffer, size, 0); // 1
 	// --------------------project3 end------------------------
 	if (file == NULL)
 	{
@@ -355,7 +362,7 @@ int read(int fd, void *buffer, unsigned size)
 	check_address(buffer);
 	check_address2(buffer + size - 1); // -1은 null 전까지만 유효하면 돼서
 	// --------------------project3 start----------------------
-	//check_valid_buffer(buffer, size, 0);
+	// check_valid_buffer(buffer, size, 0); // 0
 	// --------------------project3 end------------------------
 	char *buf = buffer;
 	int read_size;
@@ -426,6 +433,7 @@ tell(int fd)
 	}
 	return file_tell(file);
 }
+
 // --------------------project3 start----------------------
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
 
@@ -469,16 +477,15 @@ struct page * check_address2(void *addr) {
     }
     return spt_find_page(&thread_current()->spt, addr);
 }
-/*
-void check_valid_buffer(void* buffer, unsigned size, bool to_write) {
-	for (int i = 0; i < size; i++) {
-		// 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
-        struct page* page = check_address2(buffer + i);    
+
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write){
+    for(int i=0; i<size; i++){
+        struct page* page = check_address2(buffer + i);
         if(page == NULL)
             exit(-1);
         if(to_write == true && page->writable == false)
             exit(-1);
     }
 }
-*/
+
 // --------------------project3 end-------------------------

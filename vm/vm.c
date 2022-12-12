@@ -18,9 +18,7 @@ struct list_elem *start;
  * intialize codes. */
 void vm_init(void)
 {
-	printf("============================vm_init진입\n");
 	vm_anon_init();
-	printf("============================vm_init 성공\n");
 	vm_file_init();
 #ifdef EFILESYS /* For project 4 */
 	pagecache_init();
@@ -31,7 +29,7 @@ void vm_init(void)
 	list_init(&frame_table); // frame_table 리스트를 초기화
 
 	// heesan 왜 여기서 start에 frame_table의 첫 요소를 할당해주었는가?????
-	struct list_elem *start = list_begin(&frame_table);
+	start = list_begin(&frame_table);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -164,29 +162,35 @@ void spt_remove_page(struct supplemental_page_table *spt, struct page *page)
 static struct frame *
 vm_get_victim(void)//
 {
-
 	struct frame *victim = NULL;
 
 	/* TODO: The policy for eviction is up to you. */
+	/*
 	struct thread* curr = thread_current();
 	struct list_elem* e = start;
+	//struct list_elem* end_value = list_end(&frame_table);
 
-	for (start = e ; start != list_end(&frame_table); start = list_next(start))
+	for (start = e ; start != list_rbegin(&frame_table); start = list_next(start))
 	{
-		victim = list_entry(start, struct frame, frame_elem);
-		if (pml4_is_accessed(curr->pml4, victim->page->va)) //page table entry가 최근에 액세스된 경우
-			pml4_set_accessed(curr->pml4, victim->page->va, 0);  //accessed bit을 0으로 설정한다.
-		else // page table entry가 없는 경우 (pml4_is_accessed에서 false 반환)
+	 	victim = list_entry(start, struct frame, frame_elem);
+	 	if (pml4_is_accessed(curr->pml4, victim->page->va)) //page table entry가 최근에 액세스된 경우
+	 		pml4_set_accessed(curr->pml4, victim->page->va, 0);  //accessed bit을 0으로 설정한다.
+	 	else // page table entry가 없는 경우 (pml4_is_accessed에서 false 반환)
+	 		return victim;
+	}
+	for(start = list_begin(&frame_table) ; start != e; start = list_next(start))
+	{
+	 	victim = list_entry(start, struct frame, frame_elem);
+	 	if (pml4_is_accessed(curr->pml4, victim->page->va))
+	 		pml4_set_accessed(curr->pml4, victim->page->va, 0);
+	 	else
 			return victim;
 	}
-	for(start = list_begin(&frame_table) ; start != list_end(&frame_table); start = list_next(start))
-	{
-		victim = list_entry(start, struct frame, frame_elem);
-		if (pml4_is_accessed(curr->pml4, victim->page->va))
-			pml4_set_accessed(curr->pml4, victim->page->va, 0);
-		else
-			return victim;
-	}
+	*/
+	// return victim;
+	
+	struct list_elem* victim_elem = list_pop_front(&frame_table);
+	victim = list_entry(victim_elem, struct frame, frame_elem);
 	return victim;
 }
 
@@ -199,9 +203,9 @@ vm_evict_frame(void)
 	/* TODO: swap out the victim and return the evicted frame. */
 	// 비우고자 하는 해당 프레임을 victim이라 하고, 
 	// 이 victim과 연결된 가상 페이지를 swap_out()에 인자로 넣어준다.
+
 	swap_out(victim->page);
 	victim->page = NULL;
-
 	memset(victim->kva, 0, PGSIZE);
 
 	return victim;
@@ -219,7 +223,6 @@ vm_evict_frame(void)
 */
 static struct frame *
 vm_get_frame (void) {
-	// printf("=============vm_get_frame 들어옴\n");
 	// 새로운 frame 만들기
 	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
 
@@ -269,7 +272,7 @@ vm_handle_wp(struct page *page UNUSED)
 // 접근 하는데 실제로는 원하는 데이터가 물리 메모리에 load 혹은 저장되어있지 않을 경우 발생함
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 { 	
-	//printf("try handle 들어옴\n");
+	// printf("try handle 들어옴\n");
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
@@ -349,7 +352,6 @@ vm_do_claim_page(struct page *page)
 	// 페이지테이블에 frame과 page의 연결을 추가함
 	if (install_page(page->va, frame->kva, page->writable))
 	{
-		// printf("page: %p ,kva: %p\n", page->va, frame->kva);
 		// swap in: disk(swap area)에서 메모리로 데이터 가져옴
 		// page fault 나고 swap_in 실행 시 uninit_initializer가 실행됨
 		// uninit_initalizer에서 init에 있던 lazy_load_segment 호출되고, type에 맞는 initializer 호출됨
@@ -374,39 +376,39 @@ void supplemental_page_table_init(struct supplemental_page_table *spt UNUSED)
 /* src spt를 dst spt에 복사한다.*/
 bool
 supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct supplemental_page_table *src UNUSED) {
-		//----------------------------project3 anonymous page start-----------
-		struct hash_iterator i;
-		hash_first(&i, &src->spt_hash);
-		while (hash_next(&i)) // 해시테이블을 순회하며 src의 모든 페이지를 dst로 복붙.
-		{
-			// 해시테이블의 elem에서 page 받아옴.
-			struct page* parent_page = hash_entry(hash_cur(&i), struct page, hash_elem);// 부모페이지
-			enum vm_type parent_type = page_get_type(parent_page);	// 부모페이지의 type
-			void* upage = parent_page->va;  // 부모페이지의 va
-			bool writable = parent_page->writable;
-			vm_initializer *init = parent_page->uninit.init; // 부모의 init함수
-			void* aux = parent_page->uninit.aux;	// load segment로부터 전달받은 container
-			
-			if (parent_page->operations->type == VM_UNINIT) {	// 부모 type이 uninit인 경우
-				if(!vm_alloc_page_with_initializer(parent_type, upage, writable, init, aux)) {
-					return false;
-				}
-			}
-			else {	// 부모 type이 uninit이 아닌 경우
-				if(!vm_alloc_page(parent_type, upage, writable)) {
-					return false;
-				}
-				if(!vm_claim_page(upage)) {	// upage에 해당하는 frame을 할당받는다.
-					return false;
-				}
-
-				// 부모 page의 것을 자식 page에 memcpy한다. 
-				struct page* child_page = spt_find_page(dst, upage);
-				memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
+	//----------------------------project3 anonymous page start-----------
+	struct hash_iterator i;
+	hash_first(&i, &src->spt_hash);
+	while (hash_next(&i)) // 해시테이블을 순회하며 src의 모든 페이지를 dst로 복붙.
+	{
+		// 해시테이블의 elem에서 page 받아옴.
+		struct page* parent_page = hash_entry(hash_cur(&i), struct page, hash_elem);// 부모페이지
+		enum vm_type parent_type = page_get_type(parent_page);	// 부모페이지의 type
+		void* upage = parent_page->va;  // 부모페이지의 va
+		bool writable = parent_page->writable;
+		vm_initializer *init = parent_page->uninit.init; // 부모의 init함수
+		void* aux = parent_page->uninit.aux;	// load segment로부터 전달받은 container
+		
+		if (parent_page->operations->type == VM_UNINIT) {	// 부모 type이 uninit인 경우
+			if(!vm_alloc_page_with_initializer(parent_type, upage, writable, init, aux)) {
+				return false;
 			}
 		}
-		return true;
-		//----------------------------project3 anonymous page end-----------
+		else {	// 부모 type이 uninit이 아닌 경우
+			if(!vm_alloc_page(parent_type, upage, writable)) {
+				return false;
+			}
+			if(!vm_claim_page(upage)) {	// upage에 해당하는 frame을 할당받는다.
+				return false;
+			}
+
+			// 부모 page의 것을 자식 page에 memcpy한다. 
+			struct page* child_page = spt_find_page(dst, upage);
+			memcpy(child_page->frame->kva, parent_page->frame->kva, PGSIZE);
+		}
+	}
+	return true;
+	//----------------------------project3 anonymous page end-----------
 }
 
 /* Free the resource hold by the supplemental page table */

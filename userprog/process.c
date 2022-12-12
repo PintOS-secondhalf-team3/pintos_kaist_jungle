@@ -926,10 +926,10 @@ setup_stack(struct intr_frame *if_)
 	// --------------------project3 Anonymous Page start---------
 	//????????????
 	//vm_alloc_page를 통한 페이지 할당
-	printf("=====================setup_stack진입\n");
+	//printf("=====================setup_stack진입\n");
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {    // type, upage, writable
 		success = vm_claim_page(stack_bottom);
-		printf("=====================vm_alloc_page성공\n");
+		//printf("=====================vm_alloc_page성공\n");
 		if (success) {
 			if_->rsp = USER_STACK;
             thread_current()->stack_bottom = stack_bottom;
