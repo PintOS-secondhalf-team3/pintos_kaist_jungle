@@ -44,21 +44,20 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 		// 익명 페이지(예: VM_ANON)의 초기화로 사용
 	/* Set up the handler */
 	//-------project3-swap in out start----------------
-	// printf("====anon initializer 시작\n");
+
 	struct uninit_page* uninit_page = &page->uninit;
 	memset(uninit_page, 0, sizeof(struct uninit_page));
 	//-------project3-swap in out end----------------
 	page->operations = &anon_ops;
 	struct anon_page *anon_page = &page->anon;
 	anon_page->swap_location = -1;	///????????왜하지
-	// printf("====anon initializer 끝\n");
+
 	return true;
 }
 
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
-	// printf("========anon swap in 시작\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	int bitmap_idx = anon_page->swap_location;
@@ -75,7 +74,6 @@ anon_swap_in (struct page *page, void *kva) {
 	bitmap_set(swap_table, bitmap_idx, false);	// bitmap을 다시 false로 세팅
 	// bitmap_flip(swap_table, bitmap_idx);
 
-	// printf("======anon swap in 끝\n");
 	return true;
 	//-------project3-swap in out end----------------
 }
@@ -83,7 +81,6 @@ anon_swap_in (struct page *page, void *kva) {
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
-	// printf("========anon swap out 시작\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	// bitmap값이 0인 page를 찾는다.
@@ -106,7 +103,6 @@ anon_swap_out (struct page *page) {
 
 	// anon_page구조체에 page위치 저장
 	anon_page->swap_location = bitmap_idx;
-	// printf("======anon swap out 끝\n");
 	return true;
 	//-------project3-swap in out end----------------
 }

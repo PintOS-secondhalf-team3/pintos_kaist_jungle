@@ -24,7 +24,7 @@ static const struct page_operations file_ops = {
  // - file-backed page와 관련된 것을 setup할 수 있다.
 void vm_file_init(void)
 {
-	// mmaped file을 백업 공간으로 사용하기 때문에 swapdisk가 필요하지 않다????
+
 }
 
 
@@ -37,7 +37,6 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva)
 	
 	/* Set up the handler */
 	page->operations = &file_ops;
-	// printf("file init 중간\n");
 	struct file_page *file_page = &page->file;
 
 	return true;
@@ -48,8 +47,6 @@ bool file_backed_initializer(struct page *page, enum vm_type type, void *kva)
 static bool
 file_backed_swap_in(struct page *page, void *kva)
 {
-	// printf("file swap in 들어옴\n");
-	// printf("file swap in 들어옴\n");
 	struct file_page *file_page UNUSED = &page->file;
 	if (page==NULL) {	// page가 NULL이면 종료
 		return NULL;
@@ -68,21 +65,6 @@ file_backed_swap_in(struct page *page, void *kva)
 	memset(kva + page_read_bytes, 0, page_zero_bytes);
 
 	return true;
-
-	/*
-	struct file *file = container->file;
-	off_t offsetof =container->offset;
-	size_t page_read_bytes = container->page_read_bytes;
-	size_t page_zero_bytes = PGSIZE - page_read_bytes;
-	
-	file_seek(file, offsetof);	// 파일 읽을 위치 세팅
-	if (file_read(file,kva, page_read_bytes) != (int)page_read_bytes)
-	{
-		return false;
-	}
-	// frame->kva + page_read_bytes부터 page_zero_bytes만큼 값을 0으로 초기화
-	memset(kva + page_read_bytes, 0, page_zero_bytes);
-	*/
 	
 }
 

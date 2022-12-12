@@ -23,7 +23,6 @@
 #include "vm/vm.h"
 // --------------------project3 Anonymous Page start---------
 #include "vm/file.h"
-
 // --------------------project3 Anonymous Page end---------
 #endif
 
@@ -390,16 +389,21 @@ void process_exit(void)
 	{
 		close(i);
 	}
-
 	/* 실행 중인 파일 close */
 	file_close(cur->run_file);
+	
 	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
-	process_cleanup ();  // 밑으로 위치 이동
+	/* 
+	   mmap-exit 테스트케이스 때문에 cleanup()을 sema 위로 올려야 함
+	   자식이 cleanup()을 실행시키면, munmap()을 통해 수정사항을 file에 write하게 됨 
+	   그런데 만약 부모가 자식이 cleanup()을 하기 전에 checkfile을 실행시키면 
+	   수정사항이 file에 반영되지 않은 상태에서 file 내용을 체크하므로 오류가 발생하게 됨 
+	*/
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
-	sema_up(&cur->wait_sema); // 현재가 자식 wait_sema up
-	// process_cleanup();
-	sema_down(&cur->free_sema);
+	process_cleanup (); 
+	sema_up(&cur->wait_sema); 
+	sema_down(&cur->free_sema);	
 }
 
 /* Free the current process's resources. */
@@ -434,7 +438,7 @@ process_cleanup(void)
 	}
 }
 
-/* Sets up the CPU for running user code in the nest thread.
+/* Sets up the CPU for running user code in the next thread.
  * This function is called on every context switch. */
 void process_activate(struct thread *next)
 {
@@ -845,7 +849,7 @@ lazy_load_segment(struct page *page, void *aux)
 	file_seek(file, offsetof);	// 파일 읽을 위치 세팅
 	if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
 	{
-		palloc_free_page(frame->kva);	// ?????????????
+		palloc_free_page(frame->kva);	
 		return false;
 	}
 	// frame->kva + page_read_bytes부터 page_zero_bytes만큼 값을 0으로 초기화

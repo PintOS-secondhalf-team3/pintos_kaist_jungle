@@ -160,8 +160,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		// --------------------project3 Memory Mapped Files end-----------
 		default:
 			exit(-1);
-			// break;
-			// thread_exit();
 	}
 }
 
@@ -458,27 +456,8 @@ void munmap (void *addr) {
 }
 
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
-	// while(size>0) {
-	// 	// buffer 체크
-	// 	struct page* page = check_address(buffer);
-	// 	if (page == NULL) exit(-1);
 
-	// 	// to_write인자는 SYS_WRITE이면 false, SYS_READ이면 true로 들어옴
-	// 	if(to_write == true) {	
-	// 		if (page_get_type(page) == VM_FILE) {	// file인 경우 
-	// 			struct container *_container = (struct container *)page->uninit.aux;
-	// 			struct file *file = (struct file *)_container->file;
-	// 			// if(file->deny_write == false) exit(-1);
-	// 			// if(file. == false) exit(-1);
-	// 		}
-	// 	}
-	// 	else {
-	// 		if(rsp>buffer && page->writable == false) exit(-1);
-	// 	}
-	// 	buffer += PGSIZE;
-	// 	size -= PGSIZE;
-	// }
-	if (buffer <= USER_STACK && buffer >= rsp) {
+	if (buffer <= USER_STACK && buffer >= rsp) {	// 
 		return;
 	}
 
