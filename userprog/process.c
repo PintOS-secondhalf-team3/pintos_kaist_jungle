@@ -126,7 +126,7 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	struct thread *cur = thread_current();
 	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame)); //  parent_if에는 유저 스택 정보 담기
 	/* 자식 프로세스 생성 */
-	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, cur); // 마지막에 thread_current를 줘서, 같은 rsi를 공유하게 함
+	tid_t pid = thread_create(name, cur->priority+1, __do_fork, cur); // 마지막에 thread_current를 줘서, 같은 rsi를 공유하게 함
 	if (pid == TID_ERROR)
 	{
 		return TID_ERROR;

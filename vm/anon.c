@@ -44,13 +44,12 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 		// 익명 페이지(예: VM_ANON)의 초기화로 사용
 	/* Set up the handler */
 	//-------project3-swap in out start----------------
-
 	struct uninit_page* uninit_page = &page->uninit;
 	memset(uninit_page, 0, sizeof(struct uninit_page));
 	//-------project3-swap in out end----------------
 	page->operations = &anon_ops;
 	struct anon_page *anon_page = &page->anon;
-	anon_page->swap_location = -1;	///????????왜하지
+	// anon_page->swap_location = -1;	///????????왜하지
 
 	return true;
 }
@@ -84,9 +83,8 @@ anon_swap_out (struct page *page) {
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	// bitmap값이 0인 page를 찾는다.
-	int bitmap_idx = bitmap_scan(swap_table, 0, 1, false);// bitmap_idx = slot_no
+	int bitmap_idx = bitmap_scan(swap_table, 0, 1, false);	// bitmap_idx = slot_no
 	if (bitmap_idx == BITMAP_ERROR) {	
-		// printf("에러 났다!!\n");
 		return false;	// 찾지 못한 경우 
 	}
 	
