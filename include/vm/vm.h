@@ -4,8 +4,7 @@
 #include "threads/palloc.h"
 #include "lib/kernel/hash.h"
 
-enum vm_type
-{
+enum vm_type {
 	/* page not initialized */
 	VM_UNINIT = 0,
 	/* page not related to the file, aka anonymous page */
@@ -42,22 +41,19 @@ struct thread;
  * This is kind of "parent class", which has four "child class"es, which are
  * uninit_page, file_page, anon_page, and page cache (project4).
  * DO NOT REMOVE/MODIFY PREDEFINED MEMBER OF THIS STRUCTURE. */
-struct page
-{
+struct page {
 	// 해당 operations는 page 구조체를 통해 언제든 요청 될 수 있음
 	const struct page_operations *operations;
 
-	void *va;			 /* Address in terms of user space */
-	struct frame *frame; /* Back reference for frame */
+	void *va;              /* Address in terms of user space */
+	struct frame *frame;   /* Back reference for frame */
 
 	/* Your implementation */
 	//-------project3-memory_management-start--------------
 
-	// spt에서 페이지를 찾기 위해서 hash_elem 필요함.
+	// spt에서 페이지를 찾기 위해서 hash_elem 필요함. 
 	// 이 hash_elem을 타고 struct page로 가서 메타데이터를 알 수 있음
-	struct hash_elem hash_elem;
-	bool writable;	// write 가능한지 여부?? (맞나..)
-	bool in_loaded; // ?????
+	struct hash_elem hash_elem; 
 
 	//-------project3-memory_management-end----------------
 
@@ -80,6 +76,7 @@ struct page
 		struct page_cache page_cache;
 #endif
 	};
+	bool writable; // wrtie 가능한지 여부
 };
 
 /* The representation of "frame" */
@@ -115,42 +112,43 @@ struct page_operations
 /* Representation of current process's memory space.
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
-struct supplemental_page_table
-{
+struct supplemental_page_table {
 	struct hash spt_hash;
 };
 
 #include "threads/thread.h"
-void supplemental_page_table_init(struct supplemental_page_table *spt);
-bool supplemental_page_table_copy(struct supplemental_page_table *dst,
-								  struct supplemental_page_table *src);
-void supplemental_page_table_kill(struct supplemental_page_table *spt);
-struct page *spt_find_page(struct supplemental_page_table *spt,
-						   void *va);
-bool spt_insert_page(struct supplemental_page_table *spt, struct page *page);
-void spt_remove_page(struct supplemental_page_table *spt, struct page *page);
+void supplemental_page_table_init (struct supplemental_page_table *spt);
+bool supplemental_page_table_copy (struct supplemental_page_table *dst,
+		struct supplemental_page_table *src);
+void supplemental_page_table_kill (struct supplemental_page_table *spt);
+struct page *spt_find_page (struct supplemental_page_table *spt,
+		void *va);
+bool spt_insert_page (struct supplemental_page_table *spt, struct page *page);
+void spt_remove_page (struct supplemental_page_table *spt, struct page *page);
+bool spt_delete_page(struct supplemental_page_table *spt, struct page *page);
 
-void vm_init(void);
-bool vm_try_handle_fault(struct intr_frame *f, void *addr, bool user,
-						 bool write, bool not_present);
+void vm_init (void);
+bool vm_try_handle_fault (struct intr_frame *f, void *addr, bool user,
+		bool write, bool not_present);
 
 #define vm_alloc_page(type, upage, writable) \
-	vm_alloc_page_with_initializer((type), (upage), (writable), NULL, NULL)
-bool vm_alloc_page_with_initializer(enum vm_type type, void *upage,
-									bool writable, vm_initializer *init, void *aux);
-void vm_dealloc_page(struct page *page);
-bool vm_claim_page(void *va);
-enum vm_type page_get_type(struct page *page);
+	vm_alloc_page_with_initializer ((type), (upage), (writable), NULL, NULL)
+bool vm_alloc_page_with_initializer (enum vm_type type, void *upage,
+		bool writable, vm_initializer *init, void *aux);
+void vm_dealloc_page (struct page *page);
+bool vm_claim_page (void *va);
+enum vm_type page_get_type (struct page *page);
 
-bool page_less(const struct hash_elem *a_,
-			   const struct hash_elem *b_, void *aux UNUSED);
+bool
+page_less (const struct hash_elem *a_,
+           const struct hash_elem *b_, void *aux UNUSED);
 
 unsigned
-page_hash(const struct hash_elem *p_, void *aux UNUSED);
+page_hash (const struct hash_elem *p_, void *aux UNUSED);
 
 // --------------------project3 Anonymous Page start---------
 struct page *
-page_lookup(const void *address);
+page_lookup (const void *address);
 // --------------------project3 Anonymous Page end---------
 
-#endif /* VM_VM_H */
+#endif  /* VM_VM_H */

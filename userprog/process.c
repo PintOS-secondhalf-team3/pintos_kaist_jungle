@@ -394,10 +394,10 @@ void process_exit(void)
 	file_close(cur->run_file);
 	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
-	// process_cleanup ();  // 밑으로 위치 이동
+	process_cleanup ();  // 밑으로 위치 이동
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
 	sema_up(&cur->wait_sema); // 현재가 자식 wait_sema up
-	process_cleanup();
+	// process_cleanup();
 	sema_down(&cur->free_sema);
 }
 
@@ -849,6 +849,7 @@ lazy_load_segment(struct page *page, void *aux)
 	}
 	// frame->kva + page_read_bytes부터 page_zero_bytes만큼 값을 0으로 초기화
 	memset(frame->kva + page_read_bytes, 0, page_zero_bytes);
+	file_seek(file, offsetof);	// pos 업데이트
 
 	return true;
 	//-------project3-memory_management-end----------------
@@ -937,7 +938,6 @@ setup_stack(struct intr_frame *if_)
 	}
 
 	// --------------------project3 Anonymous Page start---------
-	//????????????
 	//vm_alloc_page를 통한 페이지 할당
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {    // type, upage, writable
 		success = vm_claim_page(stack_bottom);
@@ -963,6 +963,27 @@ setup_stack(struct intr_frame *if_)
 // setup stack 이후 파일 실행에 필요한 argument를 바로 stack에 넣어 주어야한다.
 // stack은 바로 사용하기 때문에 uninit page로 두지 않고 생성 후 바로 frame과 맵핑시켜준다.
 
+}
+
+/* Adds a mapping from user virtual address UPAGE to kernel
+ * virtual address KPAGE to the page table.
+ * If WRITABLE is true, the user process may modify the page;
+ * otherwise, it is read-only.
+ * UPAGE must not already be mapped.
+ * KPAGE should probably be a page obtained from the user pool
+ * with palloc_get_page().
+ * Returns true on success, false if UPAGE is already mapped or
+ * if memory allocation fails. */
+/* upage와 kpage를 연결한 정보를 페이지테이블(pml4)에 세팅함
+*/
+bool
+install_page(void *upage, void *kpage, bool writable)
+{
+	struct thread *t = thread_current();
+
+	/* Verify that there's not already a page at that virtual
+	 * address, then map our page there. */
+	return (pml4_get_page(t->pml4, upage) == NULL && pml4_set_page(t->pml4, upage, kpage, writable));
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
