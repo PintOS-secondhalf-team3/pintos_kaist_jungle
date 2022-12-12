@@ -54,8 +54,6 @@ struct page {
 	// spt에서 페이지를 찾기 위해서 hash_elem 필요함. 
 	// 이 hash_elem을 타고 struct page로 가서 메타데이터를 알 수 있음
 	struct hash_elem hash_elem; 
-	bool writable; // wrtie 가능한지 여부
-	bool in_loaded;	// ?????
 
 	//-------project3-memory_management-end----------------
 	
@@ -77,6 +75,7 @@ struct page {
 		struct page_cache page_cache;
 #endif
 	};
+	bool writable; // wrtie 가능한지 여부
 };
 
 /* The representation of "frame" */
@@ -121,6 +120,7 @@ struct page *spt_find_page (struct supplemental_page_table *spt,
 		void *va);
 bool spt_insert_page (struct supplemental_page_table *spt, struct page *page);
 void spt_remove_page (struct supplemental_page_table *spt, struct page *page);
+bool spt_delete_page(struct supplemental_page_table *spt, struct page *page);
 
 void vm_init (void);
 bool vm_try_handle_fault (struct intr_frame *f, void *addr, bool user,

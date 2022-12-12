@@ -12,10 +12,11 @@
 #include "filesys/file.h"
 #include "userprog/process.h"
 #include "vm/vm.h"
+#include "vm/file.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
-void check_address(void *addr);
+struct page *check_address(void *addr);
 
 void halt(void);
 void exit(int status);
@@ -36,8 +37,6 @@ void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
-//void check_valid_buffer(void* buffer, unsigned size, bool to_write);
-struct page * check_address2(void *addr);
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
 
 struct lock filesys_lock;
@@ -72,7 +71,7 @@ void syscall_init(void)
 /* 주소 값이 유저 영역에서 사용하는 주소 값인지 확인 하는 함수
 Pintos에서는 시스템 콜이 접근할 수 있는 주소를 0x8048000~0xc0000000으로 제한함
 유저 영역을 벗어난 영역일 경우 프로세스 종료(exit(-1)) */
-void check_address(void *addr)
+struct page *check_address(void *addr)
 {
 	struct thread *cur = thread_current();
 	/* 1. 포인터가 가리키는 주소가 유저영역의 주소인지 확인 */
@@ -84,10 +83,11 @@ void check_address(void *addr)
 		exit(-1);
 	}
 	*/
-	if (!is_user_vaddr(addr) || addr == NULL || spt_find_page(&cur->spt, addr) == NULL)
+	if (!is_user_vaddr(addr) || addr == NULL)
 	{
 		exit(-1);	/* 잘못된 접근일 경우 프로세스 종료 */
 	}
+	return spt_find_page(&cur->spt, addr);
 	
 }
 
@@ -118,7 +118,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			break;
 		case SYS_WRITE:
 		{
-			//check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
+			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		}
@@ -144,7 +144,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			break;
 		case SYS_READ:
 		{
-			//check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
+			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		}
@@ -238,7 +238,7 @@ int add_file_to_fdt(struct file *file)
 		{
 			cur_fd_table[i] = file;
 			cur->fdidx = i;
-			// printf("========================add_file_to_fdt 진입 fd: %d=============\n", cur->fdidx);
+
 			return cur->fdidx;
 		}
 	}
@@ -248,7 +248,6 @@ int add_file_to_fdt(struct file *file)
 
 int open(const char *file)
 {
-	// printf("========================open 진입=============\n");
 	/* 성공 시 fd를 생성하고 반환, 실패 시 -1 반환 */
 	check_address(file);
 	lock_acquire(&filesys_lock);
@@ -264,8 +263,6 @@ int open(const char *file)
 	{ // fd table 가득 찼다면
 		file_close(open_file);
 	}
-
-	// printf("========================fd: %d=============\n", fd);
 	return fd;
 }
 
@@ -273,9 +270,6 @@ int write(int fd, const void *buffer, unsigned size)
 {
 	struct file *file = fd_to_file(fd);
 	check_address(buffer);
-	// --------------------project3 start----------------------
-	// check_valid_buffer(buffer, size, 0); // 1
-	// --------------------project3 end------------------------
 	if (file == NULL)
 	{
 		return -1;
@@ -360,10 +354,7 @@ int read(int fd, void *buffer, unsigned size)
 	struct file *file = fd_to_file(fd);
 	// 버퍼의 처음 시작~ 끝 주소 check
 	check_address(buffer);
-	check_address2(buffer + size - 1); // -1은 null 전까지만 유효하면 돼서
-	// --------------------project3 start----------------------
-	// check_valid_buffer(buffer, size, 0); // 0
-	// --------------------project3 end------------------------
+	check_address(buffer + size - 1); // -1은 null 전까지만 유효하면 돼서
 	char *buf = buffer;
 	int read_size;
 
@@ -470,21 +461,17 @@ void munmap (void *addr) {
 	do_munmap(addr);
 }
 
-struct page * check_address2(void *addr) {
-    if (is_kernel_vaddr(addr))
-    {
-        exit(-1);
-    }
-    return spt_find_page(&thread_current()->spt, addr);
-}
-
-void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write){
-    for(int i=0; i<size; i++){
-        struct page* page = check_address2(buffer + i);
-        if(page == NULL)
-            exit(-1);
-        if(to_write == true && page->writable == false)
-            exit(-1);
+void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
+	if (buffer <= USER_STACK && buffer >= rsp) {
+		return;
+	}
+	for (int i = 0; i < size; i++) {
+		// 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
+        struct page* page = check_address(buffer + i);    
+        if(page == NULL) exit(-1);
+		// to_write인자는 SYS_READ이면 true로, SYS_WRITE이면 false로 들어옴
+		// SYS_READ일 때는 file(DISK)에서 buffer(MEM)로 write를 해야하기 때문에, page의 writable이 항상 true여야 함
+        if(to_write == true && page->writable == false) exit(-1);
     }
 }
 
