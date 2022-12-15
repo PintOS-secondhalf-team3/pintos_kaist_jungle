@@ -84,9 +84,9 @@ main (void) {
 	console_init (); // 콘솔 잠금을 가능하게 함
 
 	/* Initialize memory system. (메모리 시스템 초기화) */ 
-	mem_end = palloc_init ();
+	mem_end = palloc_init ();	// 메모리 크기 결정
 	malloc_init ();
-	paging_init (mem_end);
+	paging_init (mem_end);	// 메모리 initialize
 
 #ifdef USERPROG
 	tss_init ();

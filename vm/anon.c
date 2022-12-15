@@ -49,7 +49,6 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	//-------project3-swap in out end----------------
 	page->operations = &anon_ops;
 	struct anon_page *anon_page = &page->anon;
-	// anon_page->swap_location = -1;	///????????왜하지
 
 	return true;
 }

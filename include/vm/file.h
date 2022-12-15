@@ -9,7 +9,9 @@ enum vm_type;
 //-------project3-memory_management-start--------------
 struct file_page {
 	// --------------------project3 Anonymous Page start---------
-	
+	struct file *file;
+	size_t length;
+	off_t offset;
 	// --------------------project3 Anonymous Page end---------
 };
 //-------project3-memory_management-end----------------

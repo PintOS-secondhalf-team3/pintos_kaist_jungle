@@ -6,6 +6,7 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "filesys/fat.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -80,6 +81,7 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
+		if(fat_create_chain(&disk_inode->start - fat_fs.))
 		if (free_map_allocate (sectors, &disk_inode->start)) {
 			disk_write (filesys_disk, sector, disk_inode);
 			if (sectors > 0) {
@@ -246,8 +248,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		int sector_ofs = offset % DISK_SECTOR_SIZE;
 
 		/* Bytes left in inode, bytes left in sector, lesser of the two. */
-		off_t inode_left = inode_length (inode) - offset;
-		int sector_left = DISK_SECTOR_SIZE - sector_ofs;
+		off_t inode_left = inode_length (inode) - offset;  // 파일의 크기 - offset
+		int sector_left = DISK_SECTOR_SIZE - sector_ofs;   // sector size - sector_ofs
 		int min_left = inode_left < sector_left ? inode_left : sector_left;
 
 		/* Number of bytes to actually write into this sector. */
@@ -255,12 +257,12 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		if (chunk_size <= 0)
 			break;
 
-		if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE) {
+		if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE) {    // 한 섹터 전체에 write
 			/* Write full sector directly to disk. */
 			disk_write (filesys_disk, sector_idx, buffer + bytes_written); 
 		} else {
 			/* We need a bounce buffer. */
-			if (bounce == NULL) {
+			if (bounce == NULL) {     
 				bounce = malloc (DISK_SECTOR_SIZE);
 				if (bounce == NULL)
 					break;
