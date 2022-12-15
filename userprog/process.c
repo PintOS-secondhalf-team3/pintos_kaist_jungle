@@ -306,7 +306,10 @@ int process_exec(void *f_name)
 	/* If load failed, quit. */
 	palloc_free_page(file_name);
 	if (!success)
+	{
+		printf("==============!success\n");
 		return -1;
+	}
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
 	/* Start switched process. */
 	do_iret(&_if);
