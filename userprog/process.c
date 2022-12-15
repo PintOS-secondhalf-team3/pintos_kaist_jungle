@@ -302,7 +302,6 @@ int process_exec(void *f_name)
 
 	/* And then load the binary */
 	success = load(file_name, &_if); // f_name, if_.rip (function entry point), rsp(stack top : user stack)
-
 	/* If load failed, quit. */
 	palloc_free_page(file_name);
 	if (!success)
