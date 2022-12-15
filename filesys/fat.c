@@ -276,21 +276,27 @@ void fat_remove_chain(cluster_t clst, cluster_t pclst)
 }
 
 /* Update a value in the FAT table. */
-void fat_put(cluster_t clst, cluster_t val)
-{
+void
+fat_put (cluster_t clst, cluster_t val) {
 	/* TODO: Your code goes here. */
+	// 클러스터 번호 clst가 가리키는 FAT 엔트리를 val로 업데이트합니다. 
+	// FAT의 각 엔트리가 체인의 다음 클러스터를 가리키므로, (존재하는 경우; 그렇지 않다면 EOChain) 
+	// 이는 연결을 업데이트하는데 사용할 수 있습니다. 
+	fat_fs->fat[clst] = val;
 }
 
 /* Fetch a value in the FAT table. */
 cluster_t
-fat_get(cluster_t clst)
-{
+fat_get (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	// 주어진 클러스터 clst 가 가리키는 클러스터 번호를 반환합니다.
+	return fat_fs->fat[clst];
 }
 
 /* Covert a cluster # to a sector number. */
 disk_sector_t
-cluster_to_sector(cluster_t clst)
-{
+cluster_to_sector (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	// 클러스터 번호 clst를 해당하는 섹터 번호로 변환하고, 반환합니다.
+	return fat_fs->data_start + clst*SECTORS_PER_CLUSTER;
 }
