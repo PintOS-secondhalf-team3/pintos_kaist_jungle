@@ -6,6 +6,8 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "filesys/fat.h"
+
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -57,11 +59,25 @@ byte_to_sector(const struct inode *inode, off_t pos)
 	/* ---------------------------- >> Project.4 FAT >> ---------------------------- */
 	// 여기 구현해야 함
 	ASSERT(inode != NULL);
-	if (pos < inode->data.length)
-		return inode->data.start + pos / DISK_SECTOR_SIZE;
-	else
+	if(pos < inode->data.length / DISK_SECTOR_SIZE){
+		cluster_t cur_cluster = inode->data.start;
+		uint32_t cnt = pos / DISK_SECTOR_SIZE;
+		for (int i = 0 ; i < cnt ; i++){
+			cur_cluster = fat_get(cur_cluster); // next_cluster를 cur_cluster로 업데이트
+		}
+		return cur_cluster;
+	}
+	else{
 		return -1;
+	}
+	
+	
 	/* ---------------------------- << Project.4 FAT << ---------------------------- */
+
+	// if (pos < inode->data.length)
+	// 	return inode->data.start + pos / DISK_SECTOR_SIZE;
+	// else
+	// 	return -1;
 }
 
 /* List of open inodes, so that opening a single inode twice
