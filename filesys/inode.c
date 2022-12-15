@@ -24,6 +24,10 @@ struct inode_disk
 
 /* Returns the number of sectors to allocate for an inode SIZE
  * bytes long. */
+/*  byte를 pos로 받는다. 그래서 그에 해당하는 sector가 어디인지를 검색한다. 
+즉, 어떤 파일이 3,4,5,6 sector를 차지한다고 하자. 그리고 이 파일의 765byte는 어느 sector에 있을까?
+이 file의 start는 3이고 765byte는 2번째 섹터에 있을 것이므로 3+1 = 4가 되서, 4를 반환한다. 
+문제는 FAT은 연속할당이 아니라서 아마 inode_disk의 배열에서 찾아야될 것 같다.  */
 static inline size_t
 bytes_to_sectors(off_t size)
 {
@@ -70,8 +74,6 @@ byte_to_sector(const struct inode *inode, off_t pos)
 	else{
 		return -1;
 	}
-	
-	
 	/* ---------------------------- << Project.4 FAT << ---------------------------- */
 
 	// if (pos < inode->data.length)
@@ -119,6 +121,8 @@ bool inode_create(disk_sector_t sector, off_t length)
 		size_t sectors = bytes_to_sectors(length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
+
+		
 		if (free_map_allocate(sectors, &disk_inode->start))
 		{
 			disk_write(filesys_disk, sector, disk_inode);
