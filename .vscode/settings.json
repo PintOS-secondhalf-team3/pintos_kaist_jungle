@@ -25,6 +25,8 @@
         "inspect.h": "c",
         "uninit.h": "c",
         "bitmap.h": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "inode.h": "c",
+        "fat.h": "c"
     }
 }

@@ -23,7 +23,6 @@
 #include "vm/vm.h"
 // --------------------project3 Anonymous Page start---------
 #include "vm/file.h"
-
 // --------------------project3 Anonymous Page end---------
 #endif
 
@@ -127,7 +126,7 @@ tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 	struct thread *cur = thread_current();
 	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame)); //  parent_if에는 유저 스택 정보 담기
 	/* 자식 프로세스 생성 */
-	tid_t pid = thread_create(name, PRI_DEFAULT, __do_fork, cur); // 마지막에 thread_current를 줘서, 같은 rsi를 공유하게 함
+	tid_t pid = thread_create(name, cur->priority+1, __do_fork, cur); // 마지막에 thread_current를 줘서, 같은 rsi를 공유하게 함
 	if (pid == TID_ERROR)
 	{
 		return TID_ERROR;
@@ -390,16 +389,21 @@ void process_exit(void)
 	{
 		close(i);
 	}
-
 	/* 실행 중인 파일 close */
 	file_close(cur->run_file);
+	
 	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
-	process_cleanup ();  // 밑으로 위치 이동
+	/* 
+	   mmap-exit 테스트케이스 때문에 cleanup()을 sema 위로 올려야 함
+	   자식이 cleanup()을 실행시키면, munmap()을 통해 수정사항을 file에 write하게 됨 
+	   그런데 만약 부모가 자식이 cleanup()을 하기 전에 checkfile을 실행시키면 
+	   수정사항이 file에 반영되지 않은 상태에서 file 내용을 체크하므로 오류가 발생하게 됨 
+	*/
 	/* 프로세스 디스크립터에 프로세스 종료를 알림 */
-	sema_up(&cur->wait_sema); // 현재가 자식 wait_sema up
-	// process_cleanup();
-	sema_down(&cur->free_sema);
+	process_cleanup (); 
+	sema_up(&cur->wait_sema); 
+	sema_down(&cur->free_sema);	
 }
 
 /* Free the current process's resources. */
@@ -434,7 +438,7 @@ process_cleanup(void)
 	}
 }
 
-/* Sets up the CPU for running user code in the nest thread.
+/* Sets up the CPU for running user code in the next thread.
  * This function is called on every context switch. */
 void process_activate(struct thread *next)
 {
@@ -557,6 +561,7 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_)
 static bool
 load(const char *file_name, struct intr_frame *if_)
 {
+	//printf("======================load 진입 \n");
 	struct thread *t = thread_current();
 	struct ELF ehdr;
 	struct file *file = NULL;
@@ -807,6 +812,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack(struct intr_frame *if_)
 {	
+	//printf("======================setup_stack 진입 \n");
 	uint8_t *kpage;
 	bool success = false;
 
@@ -845,8 +851,7 @@ lazy_load_segment(struct page *page, void *aux)
 	file_seek(file, offsetof);	// 파일 읽을 위치 세팅
 	if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
 	{
-		// printf("=====================lazy_load_segment에서 파일 읽기 실패\n");
-		palloc_free_page(frame->kva);	// ?????????????
+		palloc_free_page(frame->kva);	
 		return false;
 	}
 	// frame->kva + page_read_bytes부터 page_zero_bytes만큼 값을 0으로 초기화
@@ -915,6 +920,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 bool  // 기존 앞에 static 붙어있었음.
 setup_stack(struct intr_frame *if_)
 {	
+	//printf("======================setup_stack 진입 \n");
 	// 스택을 식별하는 방법을 제공해야 할 수도 있음
 	// vm/vm.h의 vm_type에 있는 보조 마커(예: VM_MARKER_0)를 사용하여 페이지를 표시할 수 있음
 	bool success = false;
@@ -927,10 +933,8 @@ setup_stack(struct intr_frame *if_)
 
 	// --------------------project3 Anonymous Page start---------
 	//vm_alloc_page를 통한 페이지 할당
-	//printf("=====================setup_stack진입\n");
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)) {    // type, upage, writable
 		success = vm_claim_page(stack_bottom);
-		//printf("=====================vm_alloc_page성공\n");
 		if (success) {
 			if_->rsp = USER_STACK;
             thread_current()->stack_bottom = stack_bottom;

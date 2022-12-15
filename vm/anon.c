@@ -26,7 +26,6 @@ static const struct page_operations anon_ops = {
 /* Initialize the data for anonymous pages */
 void
 vm_anon_init (void) { // 익명 페이지 하위 시스템을 초기화
-	//printf("====================vm_anon_init진입\n");
 	/* TODO: Set up the swap_disk. */
 	//-------project3-swap in out start----------------
 	// 1. swap disk를 셋업.
@@ -45,21 +44,20 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 		// 익명 페이지(예: VM_ANON)의 초기화로 사용
 	/* Set up the handler */
 	//-------project3-swap in out start----------------
-	// printf("====anon initializer 시작\n");
 	struct uninit_page* uninit_page = &page->uninit;
 	memset(uninit_page, 0, sizeof(struct uninit_page));
 	//-------project3-swap in out end----------------
 	page->operations = &anon_ops;
 	struct anon_page *anon_page = &page->anon;
-	anon_page->swap_location = -1;	///????????왜하지
-	// printf("====anon initializer 끝\n");
+	// anon_page->swap_location = -1;	///????????왜하지
+
 	return true;
 }
 
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
-	// printf("========anon swap in 시작\n");
+	//printf("================anon_swap_in 직전\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	int bitmap_idx = anon_page->swap_location;
@@ -76,7 +74,6 @@ anon_swap_in (struct page *page, void *kva) {
 	bitmap_set(swap_table, bitmap_idx, false);	// bitmap을 다시 false로 세팅
 	// bitmap_flip(swap_table, bitmap_idx);
 
-	// printf("======anon swap in 끝\n");
 	return true;
 	//-------project3-swap in out end----------------
 }
@@ -84,11 +81,10 @@ anon_swap_in (struct page *page, void *kva) {
 /* Swap out the page by writing contents to the swap disk. */
 static bool
 anon_swap_out (struct page *page) {
-	// printf("========anon swap out 시작\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	// bitmap값이 0인 page를 찾는다.
-	int bitmap_idx = bitmap_scan(swap_table, 0, 1, false);// bitmap_idx = slot_no
+	int bitmap_idx = bitmap_scan(swap_table, 0, 1, false);	// bitmap_idx = slot_no
 	if (bitmap_idx == BITMAP_ERROR) {	
 		return false;	// 찾지 못한 경우 
 	}
@@ -96,7 +92,7 @@ anon_swap_out (struct page *page) {
 	// disk에 변경사항 write해줌, 1page = 8sector = 8slot
 	for (int i=0; i < SECTORS_PER_PAGE; ++i) {
 		// DISK_SECTOR_SIZE = 512 = 1섹터의 크기가 512bytes이기 때문
-		disk_write(swap_disk, bitmap_idx*SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE*i);
+		disk_write(swap_disk, bitmap_idx*SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE*i);  //질문 잘 기억 안남.
 	}
 
 	//bitmap_set(swap_table, bitmap_idx, true);	// bitmap을 다시 true로 세팅
@@ -106,7 +102,6 @@ anon_swap_out (struct page *page) {
 
 	// anon_page구조체에 page위치 저장
 	anon_page->swap_location = bitmap_idx;
-	// printf("======anon swap out 끝\n");
 	return true;
 	//-------project3-swap in out end----------------
 }

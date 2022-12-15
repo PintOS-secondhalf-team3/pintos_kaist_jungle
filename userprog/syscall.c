@@ -164,8 +164,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		// --------------------project3 Memory Mapped Files end-----------
 		default:
 			exit(-1);
-			// break;
-			// thread_exit();
 	}
 }
 
@@ -462,7 +460,8 @@ void munmap (void *addr) {
 }
 
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
-	if (buffer <= USER_STACK && buffer >= rsp) {
+
+	if (buffer <= USER_STACK && buffer >= rsp) {	// 
 		return;
 	}
 	for (int i = 0; i < size; i++) {
