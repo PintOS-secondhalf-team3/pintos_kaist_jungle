@@ -185,6 +185,41 @@ fat_fs_init (void) {
 cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
+	/* TODO: Your code goes here. */
+	// clst(클러스터 인덱싱 번호)로 특정된 클러스터의 뒤에 클러스터를 추가하여 체인을 확장함
+	// 새로 할당된 클러스터의 번호를 반환합니다.
+
+	// clst가 0이면, 새 체인을 만든다 
+	if (clst == 0) {
+		// 새 체인 만들기
+		for (cluster_t i = fat_fs->bs.fat_start; i<fat_fs->fat_length; i++) {// i는 1부터 fat_length만큼 
+			if (fat_get(i) == 0) {	// fat에서 값이 0인(빈) 클러스터를 찾아서 새로 체인을 만든다.
+				fat_put(i, EOChain);
+				return i;
+			}
+		}
+	}
+
+	// clst가 0이 아니면, clst 클러스터 뒤에 클러스터를 추가한다. 
+	else {		
+		// clst 클러스터는 항상 마지막 클러스터이어야 함
+		cluster_t next_clst_idx = fat_get(clst);	
+		if (next_clst_idx != EOChain) {	\
+			return 0;
+		}
+
+		// 빈 클러스터 찾기
+		cluster_t new_clst; 
+		for (int i = fat_fs->bs.fat_start; i<fat_fs->fat_length; i++) {
+			if (fat_get(i) == 0) {	
+				new_clst = i;
+				break;
+			}
+		}
+		// clst 클러스터 뒤에 클러스터를 추가
+		fat_put(clst, new_clst);
+		fat_put(new_clst, EOChain);
+		return new_clst;	// 새로 할당된 클러스터의 번호를 반환
 }
 
 /* Remove the chain of clusters starting from CLST.
