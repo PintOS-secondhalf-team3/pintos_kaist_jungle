@@ -55,7 +55,7 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 	//------project4-start-----------------------
 	
 	// fat을 보고 inode 찾아가게 만들기
-	if (pos < inode->data.length) {	
+	// if (pos < inode->data.length) {	
 		cluster_t start_clust = sector_to_cluster(inode->data.start);	// start의 cluster index 받기
 		while(pos >= DISK_SECTOR_SIZE ) {			// pos가 속한 cluster 찾기
 			///// file grow
@@ -67,9 +67,9 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 			pos -= DISK_SECTOR_SIZE;
 		}
 		return cluster_to_sector(start_clust);
-	}
-	else 
-		return -1;
+	// }
+	// else 
+	// 	return -1;
 	//------project4-end--------------------------
 	
 }
@@ -211,7 +211,7 @@ inode_get_inumber (const struct inode *inode) {
  * If this was the last reference to INODE, frees its memory.
  * If INODE was also a removed inode, frees its blocks. */
 void
-inode_close (struct inode *inode) {	// 바꿔
+inode_close (struct inode *inode) {	// length 바꿨으면 여기서 inode disk를 disk_write로 갱신해줘야 함
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
@@ -311,6 +311,11 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 	if (inode->deny_write_cnt)
 		return 0;
 
+	// 만약 write를 통해서 file의 크기가 늘어나야 한다면, offset+size만큼 file의 크기 늘려주기
+	if (offset + size > inode->data.length) { 
+		inode->data.length = offset + size;	
+	}
+
 	while (size > 0) {
 		/* Sector to write, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
@@ -319,7 +324,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		/* Bytes left in inode, bytes left in sector, lesser of the two. */
 		off_t inode_left = inode_length (inode) - offset;
 		int sector_left = DISK_SECTOR_SIZE - sector_ofs;
-		int min_left = inode_left < sector_left ? inode_left : sector_left;
+		int min_left = inode_left < sector_left ? inode_left : sector_left;	// file의 크기보다 더 크게 쓸 수 있도록 해야 함
 
 		/* Number of bytes to actually write into this sector. */
 		int chunk_size = size < min_left ? size : min_left;
@@ -352,7 +357,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		size -= chunk_size;
 		offset += chunk_size;
 		bytes_written += chunk_size;
-	}
+	}                      
 	free (bounce);
 
 	return bytes_written;
