@@ -26,7 +26,7 @@ void filesys_init(bool format)
 
 #ifdef EFILESYS
 	fat_init();
-
+	
 	if (format)
 		do_format();
 
@@ -63,18 +63,25 @@ void filesys_done(void)
    이름이 NAME인 파일이 이미 있거나 내부 메모리 할당이 실패한 경우 실패 */
 bool filesys_create(const char *name, off_t initial_size)
 {
-// #ifdef EFILESYS
-	// cluster_t new_cluster = fat_create_chain(0);
-	// disk_sector_t inode_sector = fat_fs->data_start + new_cluster;
-
-// #else
-	disk_sector_t inode_sector = 0;
+	//------project4-start------------------------
+	cluster_t new_cluster = fat_create_chain(0);
+	disk_sector_t inode_sector = cluster_to_sector(new_cluster);
 	struct dir *dir = dir_open_root();
-	bool success = (dir != NULL && free_map_allocate(1, &inode_sector) && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
-	if (!success && inode_sector != 0)
-		free_map_release(inode_sector, 1);
+	bool success = (dir != NULL && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
+	if (!success && inode_sector != 0) {
+		fat_remove_chain(new_cluster, 0);
+	}
 	dir_close(dir);
-// #endif
+	//------project4-end--------------------------
+
+	////// 기존 코드 start
+	// disk_sector_t inode_sector = 0;
+	// struct dir *dir = dir_open_root();
+	// bool success = (dir != NULL && free_map_allocate(1, &inode_sector) && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
+	// if (!success && inode_sector != 0)
+	// 	free_map_release(inode_sector, 1);
+	// dir_close(dir);
+	////// 기존 코드 end
 	return success;
 }
 
@@ -113,13 +120,17 @@ bool filesys_remove(const char *name)
 
 /* Formats the file system. */
 static void
-do_format(void)
+do_format(void)	// 바꿔야함
 {
 	printf("Formatting file system...");
 
 #ifdef EFILESYS
 	/* Create FAT and save it to the disk. */
-	fat_create();
+	fat_create();	// root dir 만들어야 함
+	//------project4-start------------------------
+	if (!dir_create(cluster_to_sector(ROOT_DIR_CLUSTER), 16))
+		PANIC("root directory creation failed");
+	//------project4-end--------------------------
 	fat_close();
 #else
 	free_map_create();

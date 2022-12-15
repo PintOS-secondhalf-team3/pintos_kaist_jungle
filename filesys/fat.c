@@ -150,6 +150,7 @@ fat_boot_create (void) {
 	};
 }
 
+//------project4-start---------------------------------------------------
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
@@ -221,7 +222,6 @@ fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	// 즉, 이 함수가 실행된 후에,pclst는 업데이트된 체인의 마지막 요소가 될 것입니다. 
 	// 만약 clst가 체인의 첫 요소라면, pclst는 0이 되어야 합니다.
 	
-	
 	if(pclst != 0) {	// clst가 체인의 첫 요소가 아니라면 if문 진입
 		// pclst는 체인에서 clst의 바로 이전 클러스터여야 함
 		if(fat_get(pclst) != clst) {
@@ -265,3 +265,10 @@ cluster_to_sector (cluster_t clst) {
 	// 클러스터 번호 clst를 해당하는 섹터 번호로 변환하고, 반환합니다.
 	return fat_fs->data_start + clst*SECTORS_PER_CLUSTER;
 }
+
+cluster_t
+sector_to_cluster (disk_sector_t disk_sector) {
+	return (disk_sector - fat_fs->data_start)/SECTORS_PER_CLUSTER;
+}
+
+//------project4-end-----------------------------------------------------
