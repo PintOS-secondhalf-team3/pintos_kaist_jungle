@@ -57,10 +57,12 @@ byte_to_sector (const struct inode *inode, off_t pos) {
 	// fat을 보고 inode 찾아가게 만들기
 	if (pos < inode->data.length) {
 		cluster_t start_clust = sector_to_cluster(inode->data.start);
-		cluster_t next_clust;
-		for (int i = 0; i < pos / DISK_SECTOR_SIZE - 1; i++) {
-			next_clust = fat_get(start_clust);
-			start_clust = next_clust; 
+		while(pos >= DISK_SECTOR_SIZE ) {
+			if (fat_get(start_clust) == EOChain) {
+				fat_create_chain(start_clust);
+			}
+			start_clust = fat_get(start_clust);
+			pos -= DISK_SECTOR_SIZE;
 		}
 		return cluster_to_sector(start_clust);
 	}
@@ -125,6 +127,7 @@ inode_create (disk_sector_t sector, off_t length) {	// 바꿔
 				new_disk_sector = cluster_to_sector(fat_get(sector_to_cluster(old_disk_sector)));
 				old_disk_sector = new_disk_sector;
 		}
+		free(disk_inode);
 		success = true; 
 		//------project4-end--------------------------
 
@@ -243,7 +246,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	uint8_t *buffer = buffer_;
 	off_t bytes_read = 0;
 	uint8_t *bounce = NULL;
-
 	while (size > 0) {
 		/* Disk sector to read, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
@@ -280,7 +282,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 		bytes_read += chunk_size;
 	}
 	free (bounce);
-
 	return bytes_read;
 }
 

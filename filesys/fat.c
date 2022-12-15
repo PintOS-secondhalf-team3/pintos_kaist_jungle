@@ -8,12 +8,12 @@
 
 /* Should be less than DISK_SECTOR_SIZE */
 struct fat_boot {	// booting시 fat 정보를 담는 구조체
-	unsigned int magic;
+	unsigned int magic;					// overflow 감지
 	unsigned int sectors_per_cluster; /* Fixed to 1 */
-	unsigned int total_sectors;
-	unsigned int fat_start;
-	unsigned int fat_sectors; /* Size of FAT in sectors. */
-	unsigned int root_dir_cluster;
+	unsigned int total_sectors;			// disk의 모든 sector 수
+	unsigned int fat_start;				// fat가 시작하는 sector number
+	unsigned int fat_sectors; /* Size of FAT in sectors. */	// fat가 차지하는 sector 수
+	unsigned int root_dir_cluster;		// root dir의 clst number
 };
        
 /* FAT FS */
@@ -160,7 +160,9 @@ fat_fs_init (void) {
 	// fat_fs→bs`에 저장된 일부 값을 이용, 이 함수에서 다른 유용한 데이터들을 초기화할 수도 있음
 
 	// 전체 cluster 수 -> (sector per cluster가 1임)
-	fat_fs->fat_length = fat_fs->bs.total_sectors/SECTORS_PER_CLUSTER;	
+	fat_fs->fat_length = (fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE) / (sizeof(cluster_t) * SECTORS_PER_CLUSTER);
+	// fat_fs->fat_length = fat_fs->bs.total_sectors/SECTORS_PER_CLUSTER;	
+	
 	// 파일이 들어있는 시작 섹터 -> data 저장하는 시작지점
 	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;		
 }
@@ -180,9 +182,10 @@ fat_create_chain (cluster_t clst) {
 
 	// clst가 0이면, 새 체인을 만든다 
 	if (clst == 0) {
-		// 새 체인 만들기
-		for (cluster_t i = fat_fs->bs.fat_start; i<fat_fs->fat_length; i++) {// i는 1부터 fat_length만큼 
-			if (fat_get(i) == 0) {	// fat에서 값이 0인(빈) 클러스터를 찾아서 새로 체인을 만든다.
+		// fat에서 값이 0인(빈) 클러스터를 찾아서 새로 체인을 만든다.
+		// for (cluster_t i = fat_fs->bs.fat_start; i<fat_fs->fat_length; i++) {// i는 1부터 fat_length만큼 
+		for (cluster_t i = 2; i<fat_fs->fat_length; i++) {// i는 2부터 fat_length만큼 
+			if (fat_get(i) == 0) {	
 				fat_put(i, EOChain);
 				return i;
 			}
