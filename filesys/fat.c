@@ -166,6 +166,12 @@ fat_boot_create (void) {
 void
 fat_fs_init (void) {
 	/* TODO: Your code goes here. */
+		/* TODO: Your code goes here. */
+
+	/*fat_length: 파일 시스템에 얼마나 클러스터가 많은 지를 저장*/
+	fat_fs->fat_length = fat_fs->bs.total_sectors /SECTORS_PER_CLUSTER;
+	/*data_start: 파일 저장 시작할 수 있는 섹터 위치 저장 => DATA Sector 시작 지점*/
+	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;
 }
 
 /*----------------------------------------------------------------------------*/
@@ -175,6 +181,7 @@ fat_fs_init (void) {
 /* Add a cluster to the chain.
  * If CLST is 0, start a new chain.
  * Returns 0 if fails to allocate a new cluster. */
+// 인자 clst에 새로운 clst 추가
 cluster_t
 fat_create_chain (cluster_t clst) {
 	/* TODO: Your code goes here. */
