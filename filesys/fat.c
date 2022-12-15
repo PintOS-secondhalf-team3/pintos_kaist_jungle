@@ -17,6 +17,7 @@ struct fat_boot {
 };
 
 /* FAT FS */
+// FAT 파일 시스템 정보를 담고 있음
 struct fat_fs {
 	struct fat_boot bs;
 	unsigned int *fat;

@@ -25,6 +25,8 @@
         "inspect.h": "c",
         "uninit.h": "c",
         "bitmap.h": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "loader.h": "c",
+        "debug.h": "c"
     }
 }

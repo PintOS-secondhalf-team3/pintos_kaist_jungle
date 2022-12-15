@@ -1,5 +1,4 @@
 /* anon.c: Implementation of page for non-disk image (a.k.a. anonymous page). */
-
 #include "vm/vm.h"
 #include "devices/disk.h"
 #include "lib/kernel/bitmap.h"
