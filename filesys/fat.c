@@ -160,8 +160,8 @@ fat_fs_init (void) {
 	// fat_fs→bs`에 저장된 일부 값을 이용, 이 함수에서 다른 유용한 데이터들을 초기화할 수도 있음
 
 	// 전체 cluster 수 -> (sector per cluster가 1임)
-	fat_fs->fat_length = (fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE) / (sizeof(cluster_t) * SECTORS_PER_CLUSTER);
-	// fat_fs->fat_length = fat_fs->bs.total_sectors/SECTORS_PER_CLUSTER;	
+	// fat_fs->fat_length = (fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE) / (sizeof(cluster_t) * SECTORS_PER_CLUSTER);
+	fat_fs->fat_length = fat_fs->bs.total_sectors/SECTORS_PER_CLUSTER;	
 	
 	// 파일이 들어있는 시작 섹터 -> data 저장하는 시작지점
 	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;		
@@ -196,7 +196,7 @@ fat_create_chain (cluster_t clst) {
 	else {		
 		// clst 클러스터는 항상 마지막 클러스터이어야 함
 		cluster_t next_clst_idx = fat_get(clst);	
-		if (next_clst_idx != EOChain) {	\
+		if (next_clst_idx != EOChain) {	
 			return 0;
 		}
 
@@ -271,7 +271,7 @@ cluster_to_sector (cluster_t clst) {
 
 cluster_t
 sector_to_cluster (disk_sector_t disk_sector) {
-	return (disk_sector - fat_fs->data_start)/SECTORS_PER_CLUSTER;
+	return disk_sector - (fat_fs->data_start)/SECTORS_PER_CLUSTER;
 }
 
 //------project4-end-----------------------------------------------------
