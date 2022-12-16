@@ -30,7 +30,7 @@ bytes_to_sectors (off_t size) {
 /* In-memory inode. */
 struct inode {
 	struct list_elem elem;              /* Element in inode list. */
-	disk_sector_t sector;               /* Sector number of disk location. */
+	disk_sector_t sector;               /* Sector number of disk location. */ // inode_disk의 start
 	int open_cnt;                       /* Number of openers. */
 	bool removed;                       /* True if deleted, false otherwise. */
 	int deny_write_cnt;                 /* 0: writes ok, >0: deny writes. */
@@ -221,9 +221,10 @@ inode_close (struct inode *inode) {
 	// if(inode->deny_write_cnt == 0) { 
 		
 	// }
-	disk_write(filesys_disk, inode->sector, &inode->data);	
+	
 	// printf("[inode_close] disk_write 아래\n");
-
+	
+	// disk_write(filesys_disk, inode->data.start, &inode->data);
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
@@ -248,9 +249,10 @@ inode_close (struct inode *inode) {
 		// 			bytes_to_sectors (inode->data.length)); 
 		// }
 		//////// 기존 코드 end
-
+		disk_write(filesys_disk, inode->sector, &inode->data);	
 		free (inode); 
 	}
+	
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
