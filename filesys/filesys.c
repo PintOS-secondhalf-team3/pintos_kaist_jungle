@@ -7,6 +7,7 @@
 #include "filesys/inode.h"
 #include "filesys/directory.h"
 #include "devices/disk.h"
+#include "filesys/fat.h"
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
@@ -25,7 +26,7 @@ void filesys_init(bool format)
 
 #ifdef EFILESYS
 	fat_init();
-
+	
 	if (format)
 		do_format();
 
@@ -55,20 +56,33 @@ void filesys_done(void)
 
 /* Creates a file named NAME with the given INITIAL_SIZE.
  * Returns true if successful, false otherwise.
- * Fails if a file named NAME already exists,
+ * Fails if a file named NAME already exists,∏
  * or if internal memory allocation fails. */
 /* 지정된 INITIAL_SIZE를 사용하여 NAME이라는 이름의 파일을 만든다.
    성공하면 true를 반환하고, 그렇지 않으면 false를 반환
    이름이 NAME인 파일이 이미 있거나 내부 메모리 할당이 실패한 경우 실패 */
 bool filesys_create(const char *name, off_t initial_size)
 {
-	disk_sector_t inode_sector = 0;
-	struct dir *dir = dir_open_root();
-	bool success = (dir != NULL && free_map_allocate(1, &inode_sector) && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
-	if (!success && inode_sector != 0)
-		free_map_release(inode_sector, 1);
-	dir_close(dir);
+	//------project4-start------------------------
+	cluster_t new_cluster = fat_create_chain(0);	// inode를 위한 새로운 cluster 만들기
+	if (new_cluster == 0) return false; 
+	disk_sector_t inode_sector = cluster_to_sector(new_cluster);	// 새로 만든 cluster의 disk sector
+	struct dir *dir = dir_open_root();				// dir open
+	bool success = (dir != NULL && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
+	if (!success && new_cluster != 0) {
+		fat_remove_chain(new_cluster, 0);	// 성공 못했을 시 예외처리
+	}
+	dir_close(dir);	
+	//------project4-end--------------------------
 
+	////// 기존 코드 start
+	// disk_sector_t inode_sector = 0;
+	// struct dir *dir = dir_open_root();
+	// bool success = (dir != NULL && free_map_allocate(1, &inode_sector) && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
+	// if (!success && inode_sector != 0)
+	// 	free_map_release(inode_sector, 1);
+	// dir_close(dir);
+	////// 기존 코드 end
 	return success;
 }
 
@@ -107,13 +121,17 @@ bool filesys_remove(const char *name)
 
 /* Formats the file system. */
 static void
-do_format(void)
+do_format(void)	// 바꿔야함
 {
 	printf("Formatting file system...");
 
 #ifdef EFILESYS
 	/* Create FAT and save it to the disk. */
-	fat_create();
+	fat_create();	// root dir 만들어야 함
+	//------project4-start------------------------
+	if (!dir_create(cluster_to_sector(ROOT_DIR_CLUSTER), 16))
+		PANIC("root directory creation failed");
+	//------project4-end--------------------------
 	fat_close();
 #else
 	free_map_create();

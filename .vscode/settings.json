@@ -27,6 +27,7 @@
         "bitmap.h": "c",
         "list.h": "c",
         "loader.h": "c",
-        "debug.h": "c"
+        "debug.h": "c",
+        "anon.h": "c"
     }
 }

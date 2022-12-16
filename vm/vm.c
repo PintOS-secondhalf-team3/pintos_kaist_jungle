@@ -52,8 +52,8 @@ static struct frame *vm_evict_frame(void);
 /* Create the pending page object with initializer. If you want to create a
  * page, do not create it directly and make it through this function or
  * `vm_alloc_page`. */
-/* uninit type의 page를 만든다
-   page 생성 시, 전달된 vm_type에 따라 적절한 initializer를 가져와서 uninit_new를 호출하여 생성한다.
+/*  
+   page 생성 시, 전달된 vm_type에 따라 적절한 initializer를 가져와서 uninit_new를 호출하여 uninit type의 page를 생성한다.
 */
 bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writable, vm_initializer *init, void *aux)
 {	
@@ -67,7 +67,7 @@ bool vm_alloc_page_with_initializer(enum vm_type type, void *upage, bool writabl
 	struct supplemental_page_table *spt = &thread_current()->spt;
 
 	/* Check whether the upage is already occupied or not. */
-	if (spt_find_page(spt, upage) == NULL) // page fault나면(spt에 upage가 없으면) if문 진입
+	if (spt_find_page(spt, upage) == NULL) // spt에 upage가 없으면 if문 진입
 	{
 		// TODO: Create the page, fetch the initialier according to the VM type
 		struct page *page = (struct page *)malloc(sizeof(struct page));
@@ -252,7 +252,7 @@ vm_get_frame (void) {
 //-------project3-memory_management-end----------------
 
 /* Growing the stack. */
-static void
+static void 
 vm_stack_growth(void *addr UNUSED)
 {	
 	// 페이지 할당받기 
@@ -300,8 +300,6 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
     }
     return false;
 	// --------------------project3 Anonymous Page end----------
-
-	return vm_do_claim_page(page);
 }
 
 /* Free the page.
@@ -393,7 +391,7 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct
 			}
 		}
 		else {	// 부모 type이 uninit이 아닌 경우
-			if(!vm_alloc_page(parent_type, upage, writable)) {
+			if(!vm_alloc_page(parent_type, upage, writable)) {	// uninit page를 만든다	
 				return false;
 			}
 			if(!vm_claim_page(upage)) {	// upage에 해당하는 frame을 할당받는다.

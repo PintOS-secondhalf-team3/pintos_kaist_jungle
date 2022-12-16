@@ -6,8 +6,6 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
-#include "filesys/fat.h"
-
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -55,31 +53,13 @@ struct inode
  * INODE.
  * Returns -1 if INODE does not contain data for a byte at offset
  * POS. */
-/* byte를 pos로 받는다. 그래서 그에 해당하는 sector가 어디인지를 검색한다.
-	byte_to_sector는, inode와 offset을 받았을 때, 해당 offset에 해당하는 sector를 반환 */
 static disk_sector_t
-byte_to_sector(const struct inode *inode, off_t pos)
-{
-	/* ---------------------------- >> Project.4 FAT >> ---------------------------- */
-	// 여기 구현해야 함
-	ASSERT(inode != NULL);
-	if(pos < inode->data.length / DISK_SECTOR_SIZE){
-		cluster_t cur_cluster = inode->data.start;
-		uint32_t cnt = pos / DISK_SECTOR_SIZE;
-		for (int i = 0 ; i < cnt ; i++){
-			cur_cluster = fat_get(cur_cluster); // next_cluster를 cur_cluster로 업데이트
-		}
-		return cur_cluster;
-	}
-	else{
+byte_to_sector (const struct inode *inode, off_t pos) {
+	ASSERT (inode != NULL);
+	if (pos < inode->data.length)
+		return inode->data.start + pos / DISK_SECTOR_SIZE;
+	else
 		return -1;
-	}
-	/* ---------------------------- << Project.4 FAT << ---------------------------- */
-
-	// if (pos < inode->data.length)
-	// 	return inode->data.start + pos / DISK_SECTOR_SIZE;
-	// else
-	// 	return -1;
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -100,12 +80,8 @@ void inode_init(void)
  * disk.
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
-bool inode_create(disk_sector_t sector, off_t length)
-{
-	//  file의 길이를 받으면, 그거를 sector수로 반환하고
-	// (bytes_to_sectors() 함수가 있다!) 비어있는 sector에 그것을 쓴다.
-	// 문제는 이 역시 연속 할당이 아니기 때문에 비어있는 sector를 가져와서 넣는 식으로 해야될 것이다.
-
+bool
+inode_create (disk_sector_t sector, off_t length) {
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -115,28 +91,23 @@ bool inode_create(disk_sector_t sector, off_t length)
 	 * one sector in size, and you should fix that. */
 	ASSERT(sizeof *disk_inode == DISK_SECTOR_SIZE);
 
-	disk_inode = calloc(1, sizeof *disk_inode);
-	if (disk_inode != NULL)
-	{
-		size_t sectors = bytes_to_sectors(length);
+	disk_inode = calloc (1, sizeof *disk_inode);
+	if (disk_inode != NULL) {
+		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
-
-		
-		if (free_map_allocate(sectors, &disk_inode->start))
-		{
-			disk_write(filesys_disk, sector, disk_inode);
-			if (sectors > 0)
-			{
+		if (free_map_allocate (sectors, &disk_inode->start)) {
+			disk_write (filesys_disk, sector, disk_inode);
+			if (sectors > 0) {
 				static char zeros[DISK_SECTOR_SIZE];
 				size_t i;
 
-				for (i = 0; i < sectors; i++)
-					disk_write(filesys_disk, disk_inode->start + i, zeros);
+				for (i = 0; i < sectors; i++) 
+					disk_write (filesys_disk, disk_inode->start + i, zeros); 
 			}
-			success = true;
-		}
-		free(disk_inode);
+			success = true; 
+		} 
+		free (disk_inode);
 	}
 	return success;
 }
@@ -196,10 +167,8 @@ inode_get_inumber(const struct inode *inode)
 /* Closes INODE and writes it to disk.
  * If this was the last reference to INODE, frees its memory.
  * If INODE was also a removed inode, frees its blocks. */
-// inode를 닫고, 갱신사항을 inode_disk에 적는다.
-void inode_close(struct inode *inode)
-{
-
+void
+inode_close (struct inode *inode) {
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
@@ -211,12 +180,21 @@ void inode_close(struct inode *inode)
 		list_remove(&inode->elem);
 
 		/* Deallocate blocks if removed. */
-		if (inode->removed)
-		{
-			free_map_release(inode->sector, 1);
-			free_map_release(inode->data.start,
-							 bytes_to_sectors(inode->data.length));
+		if (inode->removed) {
+			free_map_release (inode->sector, 1);
+			free_map_release (inode->data.start,
+					bytes_to_sectors (inode->data.length)); 
 		}
+		//------project4-end--------------------------
+
+		//////// 기존 코드 start
+		// /* Deallocate blocks if removed. */
+		// if (inode->removed) {
+		// 	free_map_release (inode->sector, 1);
+		// 	free_map_release (inode->data.start,
+		// 			bytes_to_sectors (inode->data.length)); 
+		// }
+		//////// 기존 코드 end
 
 		free(inode);
 	}
@@ -245,8 +223,7 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
 	off_t bytes_read = 0;
 	uint8_t *bounce = NULL;
 
-	while (size > 0)
-	{
+	while (size > 0) {
 		/* Disk sector to read, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector(inode, offset);
 		int sector_ofs = offset % DISK_SECTOR_SIZE;
@@ -286,7 +263,7 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
 		offset += chunk_size;
 		bytes_read += chunk_size;
 	}
-	free(bounce);
+	free (bounce);
 
 	return bytes_read;
 }
@@ -307,8 +284,7 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size,
 	if (inode->deny_write_cnt)
 		return 0;
 
-	while (size > 0)
-	{
+	while (size > 0) {
 		/* Sector to write, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector(inode, offset);
 		int sector_ofs = offset % DISK_SECTOR_SIZE;
@@ -316,7 +292,7 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size,
 		/* Bytes left in inode, bytes left in sector, lesser of the two. */
 		off_t inode_left = inode_length(inode) - offset;
 		int sector_left = DISK_SECTOR_SIZE - sector_ofs;
-		int min_left = inode_left < sector_left ? inode_left : sector_left;
+		int min_left = inode_left < sector_left ? inode_left : sector_left;	// file의 크기보다 더 크게 쓸 수 있도록 해야 함
 
 		/* Number of bytes to actually write into this sector. */
 		int chunk_size = size < min_left ? size : min_left;
@@ -354,7 +330,7 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size,
 		offset += chunk_size;
 		bytes_written += chunk_size;
 	}
-	free(bounce);
+	free (bounce);
 
 	return bytes_written;
 }
@@ -370,12 +346,12 @@ void inode_deny_write(struct inode *inode)
 /* Re-enables writes to INODE.
  * Must be called once by each inode opener who has called
  * inode_deny_write() on the inode, before closing the inode. */
-void inode_allow_write(struct inode *inode)
-{
+void
+inode_allow_write (struct inode *inode) {
 	// printf("====================inode_allow_write =%d======================",inode->deny_write_cnt);
-	ASSERT(inode->deny_write_cnt > 0);
-	ASSERT(inode->deny_write_cnt <= inode->open_cnt);
-
+	ASSERT (inode->deny_write_cnt > 0);
+	ASSERT (inode->deny_write_cnt <= inode->open_cnt);
+	
 	// deny_write_cnt > inode->open_cnt
 	inode->deny_write_cnt--;
 }
