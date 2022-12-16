@@ -201,7 +201,7 @@ fat_create_chain (cluster_t clst) {
 
 		// 빈 클러스터 찾기
 		cluster_t new_clst; 
-		for (int i = fat_fs->bs.fat_start; i<fat_fs->fat_length; i++) {
+		for (cluster_t i = 2; i<fat_fs->fat_length; i++) {
 			if (fat_get(i) == 0) {	
 				new_clst = i;
 				break;

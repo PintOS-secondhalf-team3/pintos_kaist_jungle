@@ -26,7 +26,7 @@ void filesys_init(bool format)
 
 #ifdef EFILESYS
 	fat_init();
-	
+	  
 	if (format)
 		do_format();
 
@@ -67,11 +67,16 @@ bool filesys_create(const char *name, off_t initial_size)
 	cluster_t new_cluster = fat_create_chain(0);	// inode를 위한 새로운 cluster 만들기
 	if (new_cluster == 0) return false; 
 	disk_sector_t inode_sector = cluster_to_sector(new_cluster);	// 새로 만든 cluster의 disk sector
+
 	struct dir *dir = dir_open_root();				// dir open
+
 	bool success = (dir != NULL && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
-	if (!success && new_cluster != 0) {
+
+	printf("======== filesys_create : success is %d ========\n", success);
+	if (!success) {
 		fat_remove_chain(new_cluster, 0);	// 성공 못했을 시 예외처리
 	}
+
 	dir_close(dir);	
 	//------project4-end--------------------------
 
@@ -83,7 +88,7 @@ bool filesys_create(const char *name, off_t initial_size)
 	// 	free_map_release(inode_sector, 1);
 	// dir_close(dir);
 	////// 기존 코드 end
-	// printf("[filesys_create] success: %d\n", success);
+	
 	return success;
 }
 
@@ -97,13 +102,15 @@ bool filesys_create(const char *name, off_t initial_size)
 struct file *
 filesys_open(const char *name)
 {
+	printf("[filesys_open] 들어옴\n");
 	struct dir *dir = dir_open_root();
 	struct inode *inode = NULL;
-
+	
 	if (dir != NULL)
 		dir_lookup(dir, name, &inode);
 	dir_close(dir);
 
+	printf("[filesys_open] 나간다\n");
 	return file_open(inode);
 }
 

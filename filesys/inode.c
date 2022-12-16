@@ -18,6 +18,7 @@ struct inode_disk {
 	off_t length;                       /* File size in bytes. */
 	unsigned magic;                     /* Magic number. */
 	uint32_t unused[125];               /* Not used. */
+	uint32_t is_dir;					// true: dir, false: file
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -88,9 +89,9 @@ inode_init (void) {
  * writes the new inode to sector SECTOR on the file system
  * disk.
  * Returns true if successful.
- * Returns false if memory or disk allocation fails. */
+ * Returns false if memory or disk allocation fails. */ 
 bool
-inode_create (disk_sector_t sector, off_t length) {	
+inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {	
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -105,30 +106,44 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);	// 만들어야 할 sector의 개수
 		disk_inode->length = length;				// 인자로 받은 length 넣어주기
 		disk_inode->magic = INODE_MAGIC;
+		disk_inode->is_dir = is_dir;	// dir정보 추가
 
-		//------project4-start-----------------------
+		//------project4-start--------------------------------------------
 		cluster_t new_cluster = fat_create_chain(0);	// 새로운 체인 만들기
 		if (new_cluster == 0) {	// 체인 만들기에 실패한 경우, 예외처리
 			free(disk_inode);
 			return success;
 		}
 		disk_inode->start = cluster_to_sector(new_cluster);	// 새로운 체인을 만든 뒤에 해당 주소를 disk_inode->start값에 넣어주기
-		cluster_t clst = sector_to_cluster(disk_inode->start);
-		cluster_t next_clst;
-
-		// sectors 개수만큼 클러스터 체인을 만들기
-		for (size_t i=1; i<sectors; i++) {
-			next_clst = fat_create_chain(clst);	
-			if(next_clst == 0) {	// 체인 만들기에 실패한 경우 예외처리
-				free(disk_inode);
-				return success;
-			}
-			clst = next_clst;
-		}
-
 		disk_write (filesys_disk, sector, disk_inode);	// inode의 구조체(메타데이터) disk에 쓰기
+		
+		// cluster_t clst = sector_to_cluster(disk_inode->start);
+		// cluster_t next_clst;
+		// // sectors 개수만큼 클러스터 체인을 만들기
+		// for (size_t i=1; i<sectors; i++) {
+		// 	next_clst = fat_create_chain(clst);	
+		// 	if(next_clst == 0) {	// 체인 만들기에 실패한 경우 예외처리
+		// 		free(disk_inode);
+		// 		return success;
+		// 	}
+		// 	clst = next_clst;
+		// }
+
 		// inode(진짜 데이터들)를 저장하는 클러스터 체인을 모두 0으로 초기화
 		if (sectors > 0) {
+			//////////
+			cluster_t clst = sector_to_cluster(disk_inode->start);
+			cluster_t next_clst;
+			// sectors 개수만큼 클러스터 체인을 만들기
+			for (size_t i=1; i<sectors; i++) {
+				next_clst = fat_create_chain(clst);	
+				if(next_clst == 0) {	// 체인 만들기에 실패한 경우 예외처리
+					free(disk_inode);
+					return success;
+				}
+				clst = next_clst;
+			}
+			//////////
 			static char zeros[DISK_SECTOR_SIZE];
 			size_t i;
 			disk_sector_t old_disk_sector = disk_inode->start;
@@ -140,7 +155,7 @@ inode_create (disk_sector_t sector, off_t length) {
 		}
 		free(disk_inode);	// mem에서 잠깐 사용한 temp buffer 느낌이므로 free해주기
 		success = true; 
-		//------project4-end--------------------------
+		//------project4-end----------------------------------------------
 
 		////////////////// 기존 코드 start
 		// if (free_map_allocate (sectors, &disk_inode->start)) {
@@ -157,6 +172,7 @@ inode_create (disk_sector_t sector, off_t length) {
 		// free (disk_inode);
 		////////////////// 기존 코드 end
 	}
+	printf("[inode_create] success: %d\n", success);
 	return success;
 }
 
@@ -212,25 +228,12 @@ inode_get_inumber (const struct inode *inode) {
  * If INODE was also a removed inode, frees its blocks. */
 void
 inode_close (struct inode *inode) {	
-	//???????
-	// length 바꿨으면 여기서 inode disk를 disk_write로 갱신해줘야 함
-	// struct inode_disk *buffer = (struct inode_disk *)&inode->data;
-	
-	// struct inode *buffer = (struct inode *)inode;
-	// printf("[inode_close] disk_write 위\n");
-	// if(inode->deny_write_cnt == 0) { 
-		
-	// }
-	
-	// printf("[inode_close] disk_write 아래\n");
-	
-	// disk_write(filesys_disk, inode->data.start, &inode->data);
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
 
 	/* Release resources if this was the last opener. */
-	if (--inode->open_cnt == 0) {
+	if (--inode->open_cnt == 0) {		// open_cnt가 0일 경우에만 inode를 삭제해준다. 
 		/* Remove from inode list and release lock. */
 		list_remove (&inode->elem);
 
@@ -239,6 +242,9 @@ inode_close (struct inode *inode) {
 			fat_remove_chain(sector_to_cluster(inode->sector), 0);		// inode 구조체(메타데이터) fat에서 제거
 			fat_remove_chain(sector_to_cluster(inode->data.start), 0);	// inode 실제 데이터들 모두를 fat에서 제거
 		}
+		// 기존 파일 크기보다 더 크게 write를 한 경우, disk에 업데이트 해 주어야 함
+		disk_write(filesys_disk, inode->sector, &inode->data);	
+		free (inode); 
 		//------project4-end--------------------------
 
 		//////// 기존 코드 start
@@ -249,8 +255,6 @@ inode_close (struct inode *inode) {
 		// 			bytes_to_sectors (inode->data.length)); 
 		// }
 		//////// 기존 코드 end
-		disk_write(filesys_disk, inode->sector, &inode->data);	
-		free (inode); 
 	}
 	
 }

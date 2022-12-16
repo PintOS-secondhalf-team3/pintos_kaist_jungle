@@ -18,17 +18,20 @@ struct file{
 struct file *
 file_open(struct inode *inode){
 	struct file *file = calloc(1, sizeof *file);
+	printf("[file_open] inode %p, file %p\n", inode, file);
 	if (inode != NULL && file != NULL)
 	{
 		file->inode = inode;
 		file->pos = 0;
 		file->deny_write = false;
+		printf("[file_open] 성공\n");
 		return file;
 	}
 	else
 	{
 		inode_close(inode);
 		free(file);
+		printf("[file_open] 실패\n");
 		return NULL;
 	}
 }
