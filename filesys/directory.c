@@ -15,7 +15,10 @@ struct dir {
 
 /* A single directory entry. */
 struct dir_entry {
+
+	// 얘가 file을 직접적으로 가리키고 있을 것
 	disk_sector_t inode_sector;         /* Sector number of header. */
+
 	char name[NAME_MAX + 1];            /* Null terminated file name. */
 	bool in_use;                        /* In use or free? */
 };
@@ -24,6 +27,9 @@ struct dir_entry {
  * given SECTOR.  Returns true if successful, false on failure. */
 bool
 dir_create (disk_sector_t sector, size_t entry_cnt) {
+	// 주어진 sector와 entry_cnt로 directory를 하나 만든다.
+	// 실제로 실행하는 것은 inode_create()가 실행한다.
+	// 이 말은, 주어진 sector부터 entry 개수 * entry 사이즈 만큼을 할당받는다는 것이다.
 	return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
 }
 
@@ -47,6 +53,8 @@ dir_open (struct inode *inode) {
  * Return true if successful, false on failure. */
 struct dir *
 dir_open_root (void) {	// cluster로 바꿈
+	// 루트 디렉토리를 열고, 이에 해당하는 dir을 반환한다.
+	// 즉, 이 파일을 실행하면 dir를 가지고, 이 dir은 ROOT_DIR_SECTOR를 열 수 있다.
 	return dir_open (inode_open (cluster_to_sector(ROOT_DIR_CLUSTER)));
 }
 
@@ -58,6 +66,8 @@ dir_reopen (struct dir *dir) {
 }
 
 /* Destroys DIR and frees associated resources. */
+//  dir를 닫는다.
+// 실제로는 dir이 가지고 있는 inode를 닫는 것이다.
 void
 dir_close (struct dir *dir) {
 	if (dir != NULL) {
@@ -67,6 +77,7 @@ dir_close (struct dir *dir) {
 }
 
 /* Returns the inode encapsulated by DIR. */
+// dir가 가지고 있는 inode를 가지고온다. 
 struct inode *
 dir_get_inode (struct dir *dir) {
 	return dir->inode;
