@@ -136,7 +136,6 @@ void file_deny_write(struct file *file){
  * same inode open.) */
 /* 파일의 데이터가 변경되는 것을 허락 */
 void file_allow_write(struct file *file){
-	// printf("=================file_allow_write====================\n");
 	ASSERT(file != NULL);
 	if (file->deny_write)
 	{

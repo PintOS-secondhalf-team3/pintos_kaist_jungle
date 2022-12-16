@@ -24,7 +24,7 @@ static const struct page_operations file_ops = {
  // - file-backed page와 관련된 것을 setup할 수 있다.
 void vm_file_init(void)
 {
-
+	
 }
 
 

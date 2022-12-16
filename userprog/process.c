@@ -302,7 +302,6 @@ int process_exec(void *f_name)
 
 	/* And then load the binary */
 	success = load(file_name, &_if); // f_name, if_.rip (function entry point), rsp(stack top : user stack)
-
 	/* If load failed, quit. */
 	palloc_free_page(file_name);
 	if (!success)
@@ -847,6 +846,7 @@ lazy_load_segment(struct page *page, void *aux)
 	size_t page_zero_bytes = PGSIZE - page_read_bytes;
 	
 	file_seek(file, offsetof);	// 파일 읽을 위치 세팅
+	// disk에 있는 file 내용을 메모리로 읽어온다. 
 	if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
 	{
 		palloc_free_page(frame->kva);	
@@ -897,14 +897,16 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 		container->file = file;
 		container->page_read_bytes = page_read_bytes;
 		container->offset = ofs;
-		// void *aux = NULL:
+		
 		if (!vm_alloc_page_with_initializer(VM_ANON, upage,
 											writable, lazy_load_segment, container)) {
+			return false;
+		}
+		// anonymous page: 어떤 파일과도 연결되지 않은 페이지
+			// stack은 anonymous page를 할당받아서 쓰기 때문에 초기 설정을 VM_ANON으로 둔다.
 			// vm_alloc_page_with_initializer: spt에 앞으로 사용할 page들(aux에 있음)을 추가해준다.
 			// vm_alloc_page_with_initializer의 5번째 인자인 aux는 load_segment에 설정한 정보
 			// 이 정보를 사용하여 세그먼트를 읽을 파일을 찾고 결국 세그먼트를 메모리로 읽어야 함
-			return false;
-		}
 
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
@@ -915,8 +917,8 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
-bool  // 기존 앞에 static 붙어있었음.
-setup_stack(struct intr_frame *if_)
+/* stack 초기화 */
+bool setup_stack(struct intr_frame *if_)
 {	
 	// 스택을 식별하는 방법을 제공해야 할 수도 있음
 	// vm/vm.h의 vm_type에 있는 보조 마커(예: VM_MARKER_0)를 사용하여 페이지를 표시할 수 있음
@@ -938,7 +940,7 @@ setup_stack(struct intr_frame *if_)
 		}
     }
 	// 마지막으로 spt_find_page를 통해 추가 페이지 테이블을 참조하여
-	//  오류가 발생한 주소에 해당하는 페이지 구조를 해결하도록
+	// 오류가 발생한 주소에 해당하는 페이지 구조를 해결하도록
 	// vm_try_handle_fault 함수를 수정합니다.
 	return success;
 }

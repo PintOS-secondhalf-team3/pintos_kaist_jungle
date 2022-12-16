@@ -6,6 +6,7 @@
 #include "filesys/filesys.h"
 #include "filesys/free-map.h"
 #include "threads/malloc.h"
+#include "filesys/fat.h"
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -40,13 +41,35 @@ struct inode {
  * INODE.
  * Returns -1 if INODE does not contain data for a byte at offset
  * POS. */
-static disk_sector_t
-byte_to_sector (const struct inode *inode, off_t pos) {
-	ASSERT (inode != NULL);
-	if (pos < inode->data.length)
-		return inode->data.start + pos / DISK_SECTOR_SIZE;
-	else
+static disk_sector_t	
+byte_to_sector (const struct inode *inode, off_t pos) {	
+	ASSERT (inode != NULL);	
+	// 기존에는 그냥 다음 sector를 찾아가게 만들었음 
+	//////// 기존 코드 start
+	// if (pos < inode->data.length)	
+	// 	return inode->data.start + pos / DISK_SECTOR_SIZE;
+	// else
+	// 	return -1;
+	/////// 기존 코드 end
+
+	//------project4-start-----------------------
+	
+	// fat을 보고 inode 찾아가게 만들기
+	if (pos < inode->data.length) {
+		cluster_t start_clust = sector_to_cluster(inode->data.start);
+		while(pos >= DISK_SECTOR_SIZE ) {
+			if (fat_get(start_clust) == EOChain) {
+				fat_create_chain(start_clust);
+			}
+			start_clust = fat_get(start_clust);
+			pos -= DISK_SECTOR_SIZE;
+		}
+		return cluster_to_sector(start_clust);
+	}
+	else 
 		return -1;
+	//------project4-end--------------------------
+	
 }
 
 /* List of open inodes, so that opening a single inode twice
@@ -65,7 +88,7 @@ inode_init (void) {
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
 bool
-inode_create (disk_sector_t sector, off_t length) {
+inode_create (disk_sector_t sector, off_t length) {	// 바꿔
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -80,18 +103,48 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);
 		disk_inode->length = length;
 		disk_inode->magic = INODE_MAGIC;
-		if (free_map_allocate (sectors, &disk_inode->start)) {
-			disk_write (filesys_disk, sector, disk_inode);
-			if (sectors > 0) {
-				static char zeros[DISK_SECTOR_SIZE];
-				size_t i;
 
-				for (i = 0; i < sectors; i++) 
-					disk_write (filesys_disk, disk_inode->start + i, zeros); 
+		//------project4-start-----------------------
+		disk_inode->start = cluster_to_sector(fat_create_chain(0));
+		cluster_t clst = sector_to_cluster(disk_inode->start);
+		cluster_t next_clst;
+		for (size_t i=0; i<sectors; i++) {
+			next_clst = fat_create_chain(clst);
+			if(next_clst == 0) {
+				free(disk_inode);
+				return success;
 			}
-			success = true; 
-		} 
-		free (disk_inode);
+			clst = next_clst;
+		}
+		disk_write (filesys_disk, sector, disk_inode);	// inode의 메타데이터 
+		if (sectors > 0) {
+			static char zeros[DISK_SECTOR_SIZE];
+			size_t i;
+			disk_sector_t old_disk_sector = disk_inode->start;
+			disk_sector_t new_disk_sector;
+			for (i = 0; i < sectors; i++) 
+				disk_write (filesys_disk, old_disk_sector, zeros);	 // inode의 진짜 데이터를 0으로 초기화
+				new_disk_sector = cluster_to_sector(fat_get(sector_to_cluster(old_disk_sector)));
+				old_disk_sector = new_disk_sector;
+		}
+		free(disk_inode);
+		success = true; 
+		//------project4-end--------------------------
+
+		////////////////// 기존 코드 start
+		// if (free_map_allocate (sectors, &disk_inode->start)) {
+		// 	disk_write (filesys_disk, sector, disk_inode);		// inode의 메타데이터
+		// 	if (sectors > 0) {
+		// 		static char zeros[DISK_SECTOR_SIZE];
+		// 		size_t i;
+
+		// 		for (i = 0; i < sectors; i++) 
+		// 			disk_write (filesys_disk, disk_inode->start + i, zeros); // inode의 진짜 데이터를 0으로 초기화
+		// 	}
+		// 	success = true; 
+		// } 
+		// free (disk_inode);
+		////////////////// 기존 코드 end
 	}
 	return success;
 }
@@ -157,12 +210,21 @@ inode_close (struct inode *inode) {
 		/* Remove from inode list and release lock. */
 		list_remove (&inode->elem);
 
-		/* Deallocate blocks if removed. */
+		//------project4-start------------------------
 		if (inode->removed) {
-			free_map_release (inode->sector, 1);
-			free_map_release (inode->data.start,
-					bytes_to_sectors (inode->data.length)); 
+			fat_remove_chain(sector_to_cluster(inode->sector), 0);
+			fat_remove_chain(sector_to_cluster(inode->data.start), 0);
 		}
+		//------project4-end--------------------------
+
+		//////// 기존 코드 start
+		// /* Deallocate blocks if removed. */
+		// if (inode->removed) {
+		// 	free_map_release (inode->sector, 1);
+		// 	free_map_release (inode->data.start,
+		// 			bytes_to_sectors (inode->data.length)); 
+		// }
+		//////// 기존 코드 end
 
 		free (inode); 
 	}
@@ -184,7 +246,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 	uint8_t *buffer = buffer_;
 	off_t bytes_read = 0;
 	uint8_t *bounce = NULL;
-
 	while (size > 0) {
 		/* Disk sector to read, starting byte offset within sector. */
 		disk_sector_t sector_idx = byte_to_sector (inode, offset);
@@ -221,7 +282,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 		bytes_read += chunk_size;
 	}
 	free (bounce);
-
 	return bytes_read;
 }
 
@@ -301,11 +361,9 @@ inode_deny_write (struct inode *inode)
  * inode_deny_write() on the inode, before closing the inode. */
 void
 inode_allow_write (struct inode *inode) {
-	// printf("====================inode_allow_write =%d======================",inode->deny_write_cnt);
 	ASSERT (inode->deny_write_cnt > 0);
 	ASSERT (inode->deny_write_cnt <= inode->open_cnt);
 	
-	// deny_write_cnt > inode->open_cnt
 	inode->deny_write_cnt--;
 }
 
