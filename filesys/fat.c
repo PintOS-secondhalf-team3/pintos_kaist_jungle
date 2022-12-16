@@ -160,8 +160,8 @@ fat_fs_init (void) {
 	// fat_fs→bs`에 저장된 일부 값을 이용, 이 함수에서 다른 유용한 데이터들을 초기화할 수도 있음
 
 	// 전체 cluster 수 -> (sector per cluster가 1임)
-	// fat_fs->fat_length = (fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE) / (sizeof(cluster_t) * SECTORS_PER_CLUSTER);
-	fat_fs->fat_length = fat_fs->bs.total_sectors/SECTORS_PER_CLUSTER;	
+	fat_fs->fat_length = (fat_fs->bs.fat_sectors * DISK_SECTOR_SIZE) / (sizeof(cluster_t) * SECTORS_PER_CLUSTER);
+	// fat_fs->fat_length = fat_fs->bs.total_sectors/SECTORS_PER_CLUSTER;	
 	
 	// 파일이 들어있는 시작 섹터 -> data 저장하는 시작지점
 	fat_fs->data_start = fat_fs->bs.fat_start + fat_fs->bs.fat_sectors;		
@@ -183,7 +183,6 @@ fat_create_chain (cluster_t clst) {
 	// clst가 0이면, 새 체인을 만든다 
 	if (clst == 0) {
 		// fat에서 값이 0인(빈) 클러스터를 찾아서 새로 체인을 만든다.
-		// for (cluster_t i = fat_fs->bs.fat_start; i<fat_fs->fat_length; i++) {// i는 1부터 fat_length만큼 
 		for (cluster_t i = 2; i<fat_fs->fat_length; i++) {// i는 2부터 fat_length만큼 
 			if (fat_get(i) == 0) {	
 				fat_put(i, EOChain);
@@ -235,9 +234,10 @@ fat_remove_chain (cluster_t clst, cluster_t pclst) {
 	}
 
 	// clst부터 체인에서 클러스터를 제거함
+	cluster_t next_clst;
 	while(true) {	
-		cluster_t next_clst = fat_get(clst);
-		fat_put(clst, 0);	// clst의 val을 0으로 바꾼다. 
+		next_clst = fat_get(clst);
+		fat_put(clst, 0);					// clst의 val을 0으로 바꾼다. 
 		if (next_clst == EOChain) break;	// 마지막 클러스터이라면 break
 		clst = next_clst;
 	}	

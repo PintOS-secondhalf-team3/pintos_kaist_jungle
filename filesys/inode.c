@@ -211,7 +211,19 @@ inode_get_inumber (const struct inode *inode) {
  * If this was the last reference to INODE, frees its memory.
  * If INODE was also a removed inode, frees its blocks. */
 void
-inode_close (struct inode *inode) {	// length 바꿨으면 여기서 inode disk를 disk_write로 갱신해줘야 함
+inode_close (struct inode *inode) {	
+	//???????
+	// length 바꿨으면 여기서 inode disk를 disk_write로 갱신해줘야 함
+	// struct inode_disk *buffer = (struct inode_disk *)&inode->data;
+	
+	// struct inode *buffer = (struct inode *)inode;
+	// printf("[inode_close] disk_write 위\n");
+	// if(inode->deny_write_cnt == 0) { 
+		
+	// }
+	disk_write(filesys_disk, inode->sector, &inode->data);	
+	// printf("[inode_close] disk_write 아래\n");
+
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
@@ -304,6 +316,7 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) {
 off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
 		off_t offset) {
+	// printf("===========wirte at 들어옴\n");
 	const uint8_t *buffer = buffer_;
 	off_t bytes_written = 0;
 	uint8_t *bounce = NULL;

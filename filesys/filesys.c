@@ -83,6 +83,7 @@ bool filesys_create(const char *name, off_t initial_size)
 	// 	free_map_release(inode_sector, 1);
 	// dir_close(dir);
 	////// 기존 코드 end
+	// printf("[filesys_create] success: %d\n", success);
 	return success;
 }
 
