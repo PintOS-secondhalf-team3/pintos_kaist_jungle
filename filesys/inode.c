@@ -200,7 +200,7 @@ inode_get_inumber (const struct inode *inode) {
  * If this was the last reference to INODE, frees its memory.
  * If INODE was also a removed inode, frees its blocks. */
 void
-inode_close (struct inode *inode) {	// 바꿔
+inode_close (struct inode *inode) {
 	/* Ignore null pointer. */
 	if (inode == NULL)
 		return;
