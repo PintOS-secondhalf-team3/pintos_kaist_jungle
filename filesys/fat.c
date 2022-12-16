@@ -196,7 +196,7 @@ fat_create_chain (cluster_t clst) {
 	else {		
 		// clst 클러스터는 항상 마지막 클러스터이어야 함
 		cluster_t next_clst_idx = fat_get(clst);	
-		if (next_clst_idx != EOChain) {	\
+		if (next_clst_idx != EOChain) {	
 			return 0;
 		}
 
