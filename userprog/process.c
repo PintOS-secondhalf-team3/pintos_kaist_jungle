@@ -403,6 +403,14 @@ void process_exit(void)
 	process_cleanup (); 
 	sema_up(&cur->wait_sema); 
 	sema_down(&cur->free_sema);	
+
+	//------project4-start---------------------------------------------
+	// 스래드의 현재작업 디렉터리의 디렉터리 정보를 메모리에서 해지 ?????????
+	// diretory를 close?? 
+	// cur->cur_dir = NULL;
+	dir_close(cur->cur_dir); // heesan
+	//------project4-end------------------------------------------------
+	
 }
 
 /* Free the current process's resources. */

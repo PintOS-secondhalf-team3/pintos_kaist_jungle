@@ -13,6 +13,8 @@
 #include "userprog/process.h"
 #include "vm/vm.h"
 #include "vm/file.h"
+#include "filesys/file.h"
+#include "filesys/inode.h"
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
@@ -38,6 +40,7 @@ unsigned tell(int fd);
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
+bool isdir (int fd);
 
 struct lock filesys_lock;
 
@@ -158,6 +161,12 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			munmap(f->R.rdi);
 			break;
 		// --------------------project3 Memory Mapped Files end-----------
+
+		//------project4-subdirectory start-----------------------
+		case SYS_ISDIR:
+			f->R.rax = isdir(f->R.rdi);
+			break;
+		//------project4-subdirectory end--------------------------
 		default:
 			exit(-1);
 	}
@@ -471,3 +480,12 @@ void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
     }
 }
 // --------------------project3 end-------------------------
+
+//------project4-start-----------------------
+bool isdir (int fd) {
+	// struct file *target = fd_to_file(fd);
+	struct file *target = thread_current()->fd_table[fd];
+
+	return inode_is_dir(file_get_inode(target));
+}
+//------project4-end--------------------------

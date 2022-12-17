@@ -27,10 +27,7 @@ struct dir_entry {
  * given SECTOR.  Returns true if successful, false on failure. */
 bool
 dir_create (disk_sector_t sector, size_t entry_cnt) {
-	// 주어진 sector와 entry_cnt로 directory를 하나 만든다.
-	// 실제로 실행하는 것은 inode_create()가 실행한다.
-	// 이 말은, 주어진 sector부터 entry 개수 * entry 사이즈 만큼을 할당받는다는 것이다.
-	return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+	return inode_create (sector, entry_cnt * sizeof (struct dir_entry), 1);
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -73,6 +70,7 @@ dir_reopen (struct dir *dir) {
 // 실제로는 dir이 가지고 있는 inode를 닫는 것이다.
 void
 dir_close (struct dir *dir) {
+	// process_exit 안에서 호출됨
 	if (dir != NULL) {
 		inode_close (dir->inode);
 		free (dir);
