@@ -35,6 +35,7 @@ dir_create (disk_sector_t sector, size_t entry_cnt) {
 
 /* Opens and returns the directory for the given INODE, of which
  * it takes ownership.  Returns a null pointer on failure. */
+// dir만큼의 메모리 공간을 할당받고, 성공했다면 이 dir에 inode를 기입
 struct dir *
 dir_open (struct inode *inode) {
 	struct dir *dir = calloc (1, sizeof *dir);
@@ -63,10 +64,12 @@ dir_open_root (void) {	// cluster로 바꿈
 struct dir *
 dir_reopen (struct dir *dir) {
 	return dir_open (inode_reopen (dir->inode));
+	// inode_reopen은 인자로 받은 inode에서 inode->open_cnt만 올려준다.
+	// 이러면 다른 곳에서 inode_close()를 실행해도 별 영향 없을 것
 }
 
 /* Destroys DIR and frees associated resources. */
-//  dir를 닫는다.
+// dir를 닫는다.
 // 실제로는 dir이 가지고 있는 inode를 닫는 것이다.
 void
 dir_close (struct dir *dir) {
@@ -88,6 +91,7 @@ dir_get_inode (struct dir *dir) {
  * if EP is non-null, and sets *OFSP to the byte offset of the
  * directory entry if OFSP is non-null.
  * otherwise, returns false and ignores EP and OFSP. */
+// lookup은 현 dir에 name을 가진 file이 있는지 bool을 반환
 static bool
 lookup (const struct dir *dir, const char *name,
 		struct dir_entry *ep, off_t *ofsp) {
@@ -100,7 +104,7 @@ lookup (const struct dir *dir, const char *name,
 	for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 			ofs += sizeof e)
 		if (e.in_use && !strcmp (name, e.name)) {
-			if (ep != NULL)
+			if (ep != NULL) 
 				*ep = e;
 			if (ofsp != NULL)
 				*ofsp = ofs;
@@ -113,6 +117,7 @@ lookup (const struct dir *dir, const char *name,
  * and returns true if one exists, false otherwise.
  * On success, sets *INODE to an inode for the file, otherwise to
  * a null pointer.  The caller must close *INODE. */
+// dir_lookup은 현 dir에 해당 file이 있는지를 보고 있으면, 인자 inode에 해당 inode를 새긴다
 bool
 dir_lookup (const struct dir *dir, const char *name,
 		struct inode **inode) {

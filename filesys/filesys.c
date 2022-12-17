@@ -26,7 +26,7 @@ void filesys_init(bool format)
 
 #ifdef EFILESYS
 	fat_init();
-	
+
 	if (format)
 		do_format();
 
@@ -64,15 +64,18 @@ void filesys_done(void)
 bool filesys_create(const char *name, off_t initial_size)
 {
 	//------project4-start------------------------
-	cluster_t new_cluster = fat_create_chain(0);	// inode를 위한 새로운 cluster 만들기
-	if (new_cluster == 0) return false; 
-	disk_sector_t inode_sector = cluster_to_sector(new_cluster);	// 새로 만든 cluster의 disk sector
-	struct dir *dir = dir_open_root();				// dir open
-	bool success = (dir != NULL && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
-	if (!success && new_cluster != 0) {
-		fat_remove_chain(new_cluster, 0);	// 성공 못했을 시 예외처리
+	disk_sector_t inode_sector = fat_create_chain(0);
+	struct dir *dir = dir_open_root(); // dir open
+	// cluster_t new_cluster = fat_create_chain(0);	// inode를 위한 새로운 cluster 만들기
+	// if (new_cluster == 0) return false;
+	// disk_sector_t inode_sector = cluster_to_sector(new_cluster);	// 새로 만든 cluster의 disk sector
+
+	bool success = (dir != NULL && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector)); // inode 만들고, dir(현재는 root_dir에만 들어가게 되어있다.)에 inode 추가
+	if (!success && inode_sector != 0)
+	{
+		fat_remove_chain(inode_sector, 0); // 성공 못했을 시 예외처리
 	}
-	dir_close(dir);	
+	dir_close(dir);
 	//------project4-end--------------------------
 
 	////// 기존 코드 start
@@ -122,13 +125,13 @@ bool filesys_remove(const char *name)
 
 /* Formats the file system. */
 static void
-do_format(void)	// 바꿔야함
+do_format(void) // 바꿔야함
 {
 	printf("Formatting file system...");
 
 #ifdef EFILESYS
 	/* Create FAT and save it to the disk. */
-	fat_create();	// root dir 만들어야 함
+	fat_create(); // root dir 만들어야 함
 	//------project4-start------------------------
 	if (!dir_create(cluster_to_sector(ROOT_DIR_CLUSTER), 16))
 		PANIC("root directory creation failed");
