@@ -75,7 +75,8 @@ bool filesys_create(const char *name, off_t initial_size)
 
 	struct dir *dir = dir_open_root();	// 수정 해야 함?>???????????
 
-	bool success = (dir != NULL && inode_create(inode_sector, initial_size, 0) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
+	bool success = (dir != NULL && inode_create(inode_sector, initial_size, 0) && dir_add(dir, name, inode_sector));	
+	// dir_add :inode 만들고, dir에 inode 추가
 	if (!success) {
 		fat_remove_chain(new_cluster, 0);	// 성공 못했을 시 예외처리
 	}
@@ -155,7 +156,9 @@ do_format(void) // 바꿔야함
 }
 
 //------project4-subdirectory start-----------------------
-struct dir* parse_path (char *path_name, char *file_name) { 
+// 경로 분석 함수 구현
+struct dir* parse_path (char *path_name, char *file_name) 
+{ 
 	struct dir *dir;
 	if (path_name == NULL || file_name == NULL) 
 		goto fail;
@@ -178,9 +181,12 @@ struct dir* parse_path (char *path_name, char *file_name) {
 		}
 
 		/* dir의 디렉터리 정보를 메모리에서 해지 (dir_close함수 안에 free가 있음)*/
-		dir_close()
+
+		dir_close(dir);
 		
 		/* inode의 디렉터리 정보를 dir에 저장 */
+
+		dir = dir_open(inode);
 
 		/* token에 검색할 경로 이름 저장 */
 	}
