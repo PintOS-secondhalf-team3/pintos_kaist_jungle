@@ -178,10 +178,13 @@ struct dir* parse_path (char *path_name, char *file_name) {
 		}
 
 		/* dir의 디렉터리 정보를 메모리에서 해지*/
-		
+		dir_close(dir);
+
 		/* inode의 디렉터리 정보를 dir에 저장 */
+		dir = dir_open(inode);
 
 		/* token에 검색할 경로 이름 저장 */
+		
 	}
 	/* token의 파일 이름을 file_name에 저장
 	/* dir 정보 반환 */ 
