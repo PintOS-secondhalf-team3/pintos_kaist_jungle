@@ -142,7 +142,7 @@ struct thread
 	int exit_status;			/* exit 호출 시 종료 status */
 
 	//------project4-start---------------------------------------------------
-	struct dir *cur_dir; 	// 
+	struct dir *cur_dir; 	// 프로세스별로 다른 디렉토리 구분 변수
 	//------project4-end-----------------------------------------------------
 };
 

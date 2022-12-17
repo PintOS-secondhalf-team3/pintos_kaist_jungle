@@ -19,7 +19,12 @@ struct inode_disk
 	off_t length;		  /* File size in bytes. */
 	unsigned magic;		  /* Magic number. */
 	uint32_t unused[125]; /* Not used. */
+
+	// ----------project4 subdiretory start ----------
+	// 디렉토리 구분 변수 
 	uint32_t is_dir;	  // true: dir, false: file
+	// ----------project4 subdiretory end ----------
+
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -442,14 +447,14 @@ bool inode_is_dir(const struct inode *inode)
 {
 	bool result;
 	/* inode_disk 자료구조를 메모리에 할당 */
-	struct inode_disk *inode_disk = calloc(1, sizeof(struct inode_disk));
+	struct inode_disk *disk_inode = calloc(1, sizeof *disk_inode);
 
 	/* in-memory inode의 on-disk inode를 읽어 inode_disk에 저장 */
-	inode_disk = &inode->data;
-
+	disk_read(filesys_disk,cluster_to_sector(inode->sector),disk_inode);
+ 
 	/* on-disk inode의 is_dir을 result에 저장하여 반환 */
-	result = inode->data.is_dir; // 1 or 0이 있을거임.
-	// result = inode_disk->is_dir;
+	result = disk_inode->is_dir; // 1 or 0이 있을거임.
+
 
 	return result;
 }
