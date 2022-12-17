@@ -8,6 +8,7 @@
 #include "filesys/directory.h"
 #include "devices/disk.h"
 #include "filesys/fat.h"
+#include "threads/thread.h"
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
@@ -31,6 +32,10 @@ void filesys_init(bool format)
 		do_format();
 
 	fat_open();
+	//------project4-start---------------------------------------------------
+	thread_current()->cur_dir = dir_open_root();
+	//------project4-end-----------------------------------------------------
+
 #else
 	/* Original FS */
 	free_map_init();
@@ -68,11 +73,9 @@ bool filesys_create(const char *name, off_t initial_size)
 	if (new_cluster == 0) return false; 
 	disk_sector_t inode_sector = cluster_to_sector(new_cluster);	// 새로 만든 cluster의 disk sector
 
-	struct dir *dir = dir_open_root();				// dir open
+	struct dir *dir = dir_open_root();	// 수정 해야 함?>???????????
 
-	bool success = (dir != NULL && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
-
-	printf("======== filesys_create : success is %d ========\n", success);
+	bool success = (dir != NULL && inode_create(inode_sector, initial_size, 0) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
 	if (!success) {
 		fat_remove_chain(new_cluster, 0);	// 성공 못했을 시 예외처리
 	}
@@ -150,3 +153,38 @@ do_format(void)	// 바꿔야함
 
 	printf("done.\n");
 }
+
+//------project4-start-----------------------
+struct dir* parse_path (char *path_name, char *file_name) { 
+	struct dir *dir;
+	if (path_name == NULL || file_name == NULL) 
+		goto fail;
+	if (strlen(path_name) == 0) 
+		return NULL;
+
+	/* PATH_NAME의 절대/상대경로에 따른 디렉터리 정보 저장 (구현)*/ 
+	char *token, *nextToken, *savePtr;
+	token = strtok_r (path_name, "/", &savePtr);
+	nextToken = strtok_r (NULL, "/", &savePtr);
+
+	while (token != NULL && nextToken != NULL){
+		/* dir에서 token이름의 파일을 검색하여 inode의 정보를 저장*/ 
+
+		struct inode* inode = dir_get_inode(dir);
+
+		/* inode가 파일일 경우 NULL 반환 */
+		if(inode_is_dir(inode) == 0) {
+			return NULL;
+		}
+
+		/* dir의 디렉터리 정보를 메모리에서 해지*/
+		
+		/* inode의 디렉터리 정보를 dir에 저장 */
+
+		/* token에 검색할 경로 이름 저장 */
+	}
+	/* token의 파일 이름을 file_name에 저장
+	/* dir 정보 반환 */ 
+}
+
+//------project4-end--------------------------

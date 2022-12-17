@@ -407,3 +407,21 @@ off_t
 inode_length (const struct inode *inode) {
 	return inode->data.length;
 }
+//------project4-start---------------------------------------------------
+
+bool inode_is_dir (const struct inode *inode) { 
+	bool result;
+	/* inode_disk 자료구조를 메모리에 할당 */
+	struct inode_disk* inode_disk = calloc(1, sizeof(struct inode_disk));
+	
+	/* in-memory inode의 on-disk inode를 읽어 inode_disk에 저장 */ 
+	inode_disk = &inode->data;
+
+	/* on-disk inode의 is_dir을 result에 저장하여 반환 */
+	result = inode->data.is_dir;
+	// result = inode_disk->is_dir;
+
+	return result;
+}
+
+//------project4-end-----------------------------------------------------
