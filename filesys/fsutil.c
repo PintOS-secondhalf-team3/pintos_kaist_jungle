@@ -95,7 +95,7 @@ fsutil_put (char **argv) {
 	src = disk_get (1, 0);
 	if (src == NULL)
 		PANIC ("couldn't open source disk (hdc or hd1:0)");
-
+	
 	/* Read file size. */
 	disk_read (src, sector++, buffer);
 	if (memcmp (buffer, "PUT", 4))
@@ -103,7 +103,6 @@ fsutil_put (char **argv) {
 	size = ((int32_t *) buffer)[1];
 	if (size < 0)
 		PANIC ("%s: invalid file size %d", file_name, size);
-
 	/* Create destination file. */
 	if (!filesys_create (file_name, size))
 		PANIC ("%s: create failed", file_name);
@@ -120,7 +119,7 @@ fsutil_put (char **argv) {
 					file_name, size);
 		size -= chunk_size;
 	}
-
+	
 	/* Finish up. */
 	file_close (dst);
 	free (buffer);
