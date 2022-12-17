@@ -29,6 +29,7 @@ bytes_to_sectors(off_t size)
 	return DIV_ROUND_UP(size, DISK_SECTOR_SIZE);
 }
 
+
 /* In-memory inode. */
 struct inode {
 	struct list_elem elem;              /* Element in inode list. */
