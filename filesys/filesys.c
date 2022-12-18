@@ -8,6 +8,7 @@
 #include "filesys/directory.h"
 #include "devices/disk.h"
 #include "filesys/fat.h"
+#include "threads/thread.h"
 
 /* The disk that contains the file system. */
 struct disk *filesys_disk;
@@ -26,11 +27,15 @@ void filesys_init(bool format)
 
 #ifdef EFILESYS
 	fat_init();
-	
+	  
 	if (format)
 		do_format();
 
 	fat_open();
+	//------project4-start---------------------------------------------------
+	thread_current()->cur_dir = dir_open_root();
+	//------project4-end-----------------------------------------------------
+
 #else
 	/* Original FS */
 	free_map_init();
@@ -67,11 +72,14 @@ bool filesys_create(const char *name, off_t initial_size)
 	cluster_t new_cluster = fat_create_chain(0);	// inode를 위한 새로운 cluster 만들기
 	if (new_cluster == 0) return false; 
 	disk_sector_t inode_sector = cluster_to_sector(new_cluster);	// 새로 만든 cluster의 disk sector
-	struct dir *dir = dir_open_root();				// dir open
-	bool success = (dir != NULL && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
-	if (!success && new_cluster != 0) {
+
+	struct dir *dir = dir_open_root();	// 수정 해야 함?>???????????
+
+	bool success = (dir != NULL && inode_create(inode_sector, initial_size, 0) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
+	if (!success) {
 		fat_remove_chain(new_cluster, 0);	// 성공 못했을 시 예외처리
 	}
+
 	dir_close(dir);	
 	//------project4-end--------------------------
 
@@ -83,7 +91,7 @@ bool filesys_create(const char *name, off_t initial_size)
 	// 	free_map_release(inode_sector, 1);
 	// dir_close(dir);
 	////// 기존 코드 end
-	// printf("[filesys_create] success: %d\n", success);
+	
 	return success;
 }
 
@@ -97,13 +105,15 @@ bool filesys_create(const char *name, off_t initial_size)
 struct file *
 filesys_open(const char *name)
 {
+	printf("[filesys_open] 들어옴\n");
 	struct dir *dir = dir_open_root();
 	struct inode *inode = NULL;
-
+	
 	if (dir != NULL)
 		dir_lookup(dir, name, &inode);
 	dir_close(dir);
 
+	printf("[filesys_open] 나간다\n");
 	return file_open(inode);
 }
 
@@ -143,3 +153,68 @@ do_format(void)	// 바꿔야함
 
 	printf("done.\n");
 }
+
+//------project4-start-----------------------
+struct dir* parse_path (char *path_name, char *file_name) { 
+	struct dir *dir;
+	// printf("=======================parse_path 진입\n");
+	// printf("==============path_name: %s", path_name);
+	if (path_name == NULL || file_name == NULL) 
+
+		goto fail;
+	if (strlen(path_name) == 0) 
+		return NULL;
+
+	// path_name의 절대/상대 경로에 따른 디렉터리 정보 저장
+	if (path_name[0] == '/'){
+		dir = dir_open_root();
+	}
+	else {
+		dir = dir_reopen(thread_current()->cur_dir);
+	}
+
+	/* PATH_NAME의 절대/상대경로에 따른 디렉터리 정보 저장 (구현)*/ 
+	char *token, *nextToken, *savePtr;
+	token = strtok_r (path_name, "/", &savePtr);
+	nextToken = strtok_r (NULL, "/", &savePtr);
+
+	// "/"를 open하려는 케이스
+	if (token == NULL){
+		token = (char*)malloc(2);
+		strlcpy(token, ".", 2);
+	}
+
+	struct inode* inode;
+	while (token != NULL && nextToken != NULL){
+		/* dir에서 token이름의 파일을 검색하여 inode의 정보를 저장*/ 
+		if (!dir_lookup(dir,token, &inode)){
+			dir_close(dir);
+			return NULL;
+		}
+
+		struct inode* inode = dir_get_inode(dir);   //보류 
+
+		/* inode가 파일일 경우 NULL 반환 */
+		if(inode_is_dir(inode) == 0) {
+			dir_close(dir);
+			inode_close(inode);
+			return NULL;
+		}
+
+		/* dir의 디렉터리 정보를 메모리에서 해지*/
+		dir_close(dir);
+		
+		/* inode의 디렉터리 정보를 dir에 저장 */
+		dir = dir_open(inode);
+		/* token에 검색할 경로 이름 저장 */
+		token = nextToken;
+		nextToken = strtok_r(NULL ,"/", &savePtr);
+		//token = trtok_r (NULL, "/", &savePtr);
+	}
+	// token의 파일 이름을 file_name에 저장
+	strlcpy(file_name, token, strlen(token) + 1);
+	/* dir 정보 반환 */ 
+	return dir;
+}
+
+//------project4-end--------------------------
