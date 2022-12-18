@@ -37,11 +37,18 @@ int filesize(int fd);
 int read(int fd, void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
-void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
-void munmap (void *addr);
-void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
-bool isdir (int fd);
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap(void *addr);
+void check_valid_buffer(void *buffer, unsigned size, void *rsp, bool to_write);
 
+// ------------project4 - Subdirectories and Soft Links start------------
+bool isdir(int fd);
+bool chdir(const char *dir);
+bool mkdir(const char *dir);
+bool readdir(int fd, char *name);
+int inumber(int fd);
+int symlink(const char *target, const char *linkpath);
+// ------------project4 - Subdirectories and Soft Links end------------
 struct lock filesys_lock;
 
 /* System call.
@@ -88,10 +95,9 @@ struct page *check_address(void *addr)
 	*/
 	if (!is_user_vaddr(addr) || addr == NULL)
 	{
-		exit(-1);	/* 잘못된 접근일 경우 프로세스 종료 */
+		exit(-1); /* 잘못된 접근일 경우 프로세스 종료 */
 	}
 	return spt_find_page(&cur->spt, addr);
-	
 }
 
 /* The main system call interface */
@@ -101,74 +107,99 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	int sys_num = f->R.rax;
 
 	// 스레드 구조체에 유저모드(interrupt frame에 있음)의 rsp를 저장함
-	thread_current()->rsp_stack = f->rsp;	
+	thread_current()->rsp_stack = f->rsp;
 
 	// check_address(sys_num);  /* 스택 포인터가 유저 영역인지 확인 */
 
 	switch (sys_num)
 	{
-		case SYS_HALT:
-			halt();
-			break;
-		case SYS_EXIT:
-			exit(f->R.rdi);
-			break;
-		case SYS_CREATE:
-			f->R.rax = create(f->R.rdi, f->R.rsi);
-			break;
-		case SYS_REMOVE:
-			f->R.rax = remove(f->R.rdi);
-			break;
-		case SYS_WRITE:
-			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
-			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
-			break;
-		case SYS_WAIT:
-			f->R.rax = wait(f->R.rdi);
-			break;
-		case SYS_FORK:
-			f->R.rax = fork(f->R.rdi, f);
-			break;
-		case SYS_EXEC:
-			if (exec(f->R.rdi) == -1){
-				exit(-1);
-			}
-			break;
-		case SYS_OPEN:
-			f->R.rax = open(f->R.rdi);
-			break;
-		case SYS_CLOSE:
-			close(f->R.rdi);
-			break;
-		case SYS_FILESIZE:
-			f->R.rax = filesize(f->R.rdi);
-			break;
-		case SYS_READ:
-			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
-			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
-			break;
-		case SYS_SEEK:
-			seek(f->R.rdi, f->R.rsi);
-			break;
-		case SYS_TELL:
-			f->R.rax = tell(f->R.rdi);
-			break;
-		// --------------------project3 Memory Mapped Files start---------
-		case SYS_MMAP:
-			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
-			break;
-		case SYS_MUNMAP:
-			munmap(f->R.rdi);
-			break;
-		// --------------------project3 Memory Mapped Files end-----------
-
-		//------project4-subdirectory start-----------------------
-		case SYS_ISDIR:
-			f->R.rax = isdir(f->R.rdi);
-			break;
-		//------project4-subdirectory end--------------------------
-		default:
+	case SYS_HALT:
+		halt();
+		break;
+	case SYS_EXIT:
+		exit(f->R.rdi);
+		break;
+	case SYS_CREATE:
+		f->R.rax = create(f->R.rdi, f->R.rsi);
+		break;
+	case SYS_REMOVE:
+		f->R.rax = remove(f->R.rdi);
+		break;
+	case SYS_WRITE:
+		check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
+		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
+	case SYS_WAIT:
+		f->R.rax = wait(f->R.rdi);
+		break;
+	case SYS_FORK:
+		f->R.rax = fork(f->R.rdi, f);
+		break;
+	case SYS_EXEC:
+		if (exec(f->R.rdi) == -1)
+		{
 			exit(-1);
+		}
+		break;
+	case SYS_OPEN:
+		f->R.rax = open(f->R.rdi);
+		break;
+	case SYS_CLOSE:
+		close(f->R.rdi);
+		break;
+	case SYS_FILESIZE:
+		f->R.rax = filesize(f->R.rdi);
+		break;
+	case SYS_READ:
+		check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
+		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
+	case SYS_SEEK:
+		seek(f->R.rdi, f->R.rsi);
+		break;
+	case SYS_TELL:
+		f->R.rax = tell(f->R.rdi);
+		break;
+	// --------------------project3 Memory Mapped Files start---------
+	case SYS_MMAP:
+		f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+		break;
+	case SYS_MUNMAP:
+		munmap(f->R.rdi);
+		break;
+	// --------------------project3 Memory Mapped Files end-----------
+
+	//------project4-subdirectory start-----------------------
+	case SYS_ISDIR:
+		f->R.rax = isdir(f->R.rdi);
+		break;
+	case SYS_CHDIR:
+		f->R.rax = chdir(f->R.rdi);
+		break;
+	case SYS_MKDIR:
+		f->R.rax = mkdir(f->R.rdi);
+		break;
+	case SYS_READDIR:
+		f->R.rax = readdir(f->R.rdi, f->R.rsi);
+		break;
+	case SYS_INUMBER:
+		f->R.rax = inumber(f->R.rdi);
+		break;
+	case SYS_SYMLINK:
+		f->R.rax = symlink(f->R.rdi, f->R.rsi);
+		break;
+	//------project4-subdirectory end--------------------------
+	default:
+		exit(-1);
+
+		// /* Project 4 only.
+		// 기존 시스템 콜들 중에서, close만 디렉토리에 대한 file descriptor를 받을 수 있도록 해야합니다.
+		// SYS_CHDIR,                  /* Change the current directory. */
+		// SYS_MKDIR,                  /* Create a directory. */
+		// SYS_READDIR,                /* Reads a directory entry. */
+		// SYS_ISDIR,                  /* Tests if a fd represents a directory. */
+		// SYS_INUMBER,                /* Returns the inode number for a fd. */
+		// SYS_SYMLINK,                /* Returns the inode number for a fd. */
 	}
 }
 
@@ -202,6 +233,7 @@ bool create(const char *file, unsigned initial_size)
 
 bool remove(const char *file)
 {
+	// project4 - Subdirectories and Soft Links- 에 맞게 수정해야함
 	check_address(file);
 	/* 파일 이름에 해당하는 파일을 제거 */
 	/* 파일 제거 성공 시 true 반환, 실패 시 false 반환 */
@@ -429,63 +461,106 @@ tell(int fd)
 }
 
 // --------------------project3 start----------------------
-void *mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset)
+{
 
 	// 1. 파일 내용을 읽는 위치(커서)(offset)가 page-align되어야 함 -> struct file의 pos멤버
-	if (offset % PGSIZE != 0) {
+	if (offset % PGSIZE != 0)
+	{
 		return NULL;
 	}
 
 	// 2. 가상 유저 page 시작 주소(addr)가 page-align되어야 함, addr이 유저영역이어야 함, addr이 NULL이 아니어야 함, length가 0보다 커야 함
-	if ( (pg_round_down(addr) != addr) || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0 ) {
+	if ((pg_round_down(addr) != addr) || is_kernel_vaddr(addr) || addr == NULL || (long long)length <= 0)
+	{
 		return NULL;
 	}
 
 	// 3. fd가 콘솔 입출력(STDIN/STDOUT)이 아니어야 함
-	if (fd == 0 || fd == 1) {
+	if (fd == 0 || fd == 1)
+	{
 		exit(-1);
 	}
 
 	// 4. 매핑하려는 페이지가 이미 spt에 존재하는 페이지이면 안됨
-	if (spt_find_page(&thread_current()->spt, addr)) {
+	if (spt_find_page(&thread_current()->spt, addr))
+	{
 		return NULL;
 	}
 
 	struct file *target = fd_to_file(fd);
 
-	if (target == NULL) {
+	if (target == NULL)
+	{
 		return NULL;
 	}
 
 	return do_mmap(addr, length, writable, target, offset);
 }
 
-void munmap (void *addr) {
+void munmap(void *addr)
+{
 	do_munmap(addr);
 }
 
-void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
+void check_valid_buffer(void *buffer, unsigned size, void *rsp, bool to_write)
+{
 
-	if (buffer <= USER_STACK && buffer >= rsp) {	// 
+	if (buffer <= USER_STACK && buffer >= rsp)
+	{ //
 		return;
 	}
 
-	for (int i = 0; i < size; i++) {
+	for (int i = 0; i < size; i++)
+	{
 		// 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
-        struct page* page = check_address(buffer + i);    
-        if(page == NULL) exit(-1);
+		struct page *page = check_address(buffer + i);
+		if (page == NULL)
+			exit(-1);
 		// to_write인자는 SYS_READ이면 true로, SYS_WRITE이면 false로 들어옴
 		// SYS_READ일 때는 file(DISK)에서 buffer(MEM)로 write를 해야하기 때문에, page의 writable이 항상 true여야 함
-        if(to_write == true && page->writable == false) exit(-1);
-    }
+		if (to_write == true && page->writable == false)
+			exit(-1);
+	}
 }
 // --------------------project3 end-------------------------
 
 //------project4-start-----------------------
-bool isdir (int fd) {
+bool isdir(int fd)
+{
 	// struct file *target = fd_to_file(fd);
 	struct file *target = thread_current()->fd_table[fd];
 
 	return inode_is_dir(file_get_inode(target));
+}
+
+// 프로세스의 현재 작업 디렉토리를 상대 혹은 절대 경로 dir 로 변환
+bool chdir(const char *dir)
+{
+
+}
+
+// 상대 혹은 절대 디렉토리 이름이 dir인 디렉토리를 생성
+bool mkdir(const char *dir)
+{
+
+}
+
+// 디렉토리를 나타내는 file descriptor fd로부터 디렉토리 엔트리를 읽습니다.
+// 성공하면 null로 끝나는 파일명을 name에 저장하고 true를 반환합니다.
+// name에는 READDIR_MAX_LEN + 1 bytes만큼의 공간이 있어야 합니다.
+// 디렉토리에 엔트리가 하나도 없으면 false를 반환합니다. 
+bool readdir(int fd, char *name)
+{
+
+}
+
+int inumber(int fd)
+{
+
+}
+int symlink(const char *target, const char *linkpath)
+{
+
 }
 //------project4-end--------------------------

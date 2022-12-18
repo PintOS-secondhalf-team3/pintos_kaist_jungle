@@ -87,6 +87,7 @@ byte_to_sector(const struct inode *inode, off_t pos)
 
 /* List of open inodes, so that opening a single inode twice
  * returns the same `struct inode'. */
+// in-memory inode 전역변수 (Double linked list)
 static struct list open_inodes;
 
 /* Initializes the inode module. */
@@ -102,6 +103,8 @@ void inode_init(void)
  * Returns false if memory or disk allocation fails. */
 bool inode_create(disk_sector_t sector, off_t length, uint32_t is_dir)
 {
+	// inode_create : on-disk inode 생성하는 함수이다.
+	// in-memory inode는 PM에만 존재하고 inode_open 때 만들어진다.
 	// 3번째 인자로 uint32_t is_dir 추가 <- 파일,디렉터리 구분 인자 1이면 디렉토리, 0이면 파일
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
@@ -441,8 +444,10 @@ off_t inode_length(const struct inode *inode)
 {
 	return inode->data.length;
 }
-//------project4-start---------------------------------------------------
 
+//------project4-start---------------------------------------------------
+// fd 리스트에서 fd에 대한 file 정보를 얻어옴
+// fd의 in-memory inode가 디렉터리 인지 판단하여 성공여부 반환
 bool inode_is_dir(const struct inode *inode)
 {
 	bool result;
