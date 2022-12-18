@@ -157,37 +157,65 @@ do_format(void)	// 바꿔야함
 //------project4-start-----------------------
 struct dir* parse_path (char *path_name, char *file_name) { 
 	struct dir *dir;
+	// printf("=======================parse_path 진입\n");
+	// printf("==============path_name: %s", path_name);
 	if (path_name == NULL || file_name == NULL) 
+
 		goto fail;
 	if (strlen(path_name) == 0) 
 		return NULL;
+
+	// path_name의 절대/상대 경로에 따른 디렉터리 정보 저장
+	if (path_name[0] == '/'){
+		dir = dir_open_root();
+	}
+	else {
+		dir = dir_reopen(thread_current()->cur_dir);
+	}
 
 	/* PATH_NAME의 절대/상대경로에 따른 디렉터리 정보 저장 (구현)*/ 
 	char *token, *nextToken, *savePtr;
 	token = strtok_r (path_name, "/", &savePtr);
 	nextToken = strtok_r (NULL, "/", &savePtr);
 
+	// "/"를 open하려는 케이스
+	if (token == NULL){
+		token = (char*)malloc(2);
+		strlcpy(token, ".", 2);
+	}
+
+	struct inode* inode;
 	while (token != NULL && nextToken != NULL){
 		/* dir에서 token이름의 파일을 검색하여 inode의 정보를 저장*/ 
+		if (!dir_lookup(dir,token, &inode)){
+			dir_close(dir);
+			return NULL;
+		}
 
-		struct inode* inode = dir_get_inode(dir);
+		struct inode* inode = dir_get_inode(dir);   //보류 
 
 		/* inode가 파일일 경우 NULL 반환 */
 		if(inode_is_dir(inode) == 0) {
+			dir_close(dir);
+			inode_close(inode);
 			return NULL;
 		}
 
 		/* dir의 디렉터리 정보를 메모리에서 해지*/
 		dir_close(dir);
-
+		
 		/* inode의 디렉터리 정보를 dir에 저장 */
 		dir = dir_open(inode);
-
 		/* token에 검색할 경로 이름 저장 */
-		
+		token = nextToken;
+		nextToken = strtok_r(NULL ,"/", &savePtr);
+		//token = trtok_r (NULL, "/", &savePtr);
+
 	}
-	/* token의 파일 이름을 file_name에 저장
+	// token의 파일 이름을 file_name에 저장
+	strlcpy(file_name, token, strlen(token) + 1);
 	/* dir 정보 반환 */ 
+	return dir;
 }
 
 //------project4-end--------------------------

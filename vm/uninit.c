@@ -63,6 +63,7 @@ uninit_initialize (struct page *page, void *kva) {
 
 	/* TODO: You may need to fix this function. */
 	// type이 anon인 경우, page_initializer: anon_initializer(), init: lazy_load_segment() 여기서 호출됨
+	
 	return uninit->page_initializer (page, uninit->type, kva) &&
 		(init ? init (page, aux) : true);
 }

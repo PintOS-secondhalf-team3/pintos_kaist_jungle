@@ -120,9 +120,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = remove(f->R.rdi);
 			break;
 		case SYS_WRITE:
+		{
 			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 0);
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		}
 		case SYS_WAIT:
 			f->R.rax = wait(f->R.rdi);
 			break;
@@ -144,9 +146,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
+		{
 			check_valid_buffer(f->R.rsi, f->R.rdx, f->rsp, 1);
 			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
+		}
 		case SYS_SEEK:
 			seek(f->R.rdi, f->R.rsi);
 			break;
@@ -469,7 +473,6 @@ void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
 	if (buffer <= USER_STACK && buffer >= rsp) {	// 
 		return;
 	}
-
 	for (int i = 0; i < size; i++) {
 		// 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
         struct page* page = check_address(buffer + i);    
@@ -489,3 +492,4 @@ bool isdir (int fd) {
 	return inode_is_dir(file_get_inode(target));
 }
 //------project4-end--------------------------
+

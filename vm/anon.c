@@ -56,6 +56,7 @@ anon_initializer (struct page *page, enum vm_type type, void *kva) {
 /* Swap in the page by read contents from the swap disk. */
 static bool
 anon_swap_in (struct page *page, void *kva) {
+	//printf("================anon_swap_in 직전\n");
 	struct anon_page *anon_page = &page->anon;
 	//-------project3-swap in out start----------------
 	int bitmap_idx = anon_page->swap_location;
@@ -88,13 +89,13 @@ anon_swap_out (struct page *page) {
 	}
 	
 	// disk에 변경사항 write해줌, 1page = 8sector = 8slot
-	for (int i=0; i < SECTORS_PER_PAGE; i++) {
+	for (int i=0; i < SECTORS_PER_PAGE; ++i) {
 		// DISK_SECTOR_SIZE = 512 = 1섹터의 크기가 512bytes이기 때문
-		disk_write(swap_disk, bitmap_idx*SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE*i);
+		disk_write(swap_disk, bitmap_idx*SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE*i);  //질문 잘 기억 안남.
 	}
 
-	bitmap_set(swap_table, bitmap_idx, true);	// bitmap을 다시 true로 세팅
-	// bitmap_flip(swap_table, bitmap_idx);
+	//bitmap_set(swap_table, bitmap_idx, true);	// bitmap을 다시 true로 세팅
+	bitmap_flip(swap_table, bitmap_idx);
 	
 	pml4_clear_page(thread_current()->pml4, page->va);	// pml4에서 삭제
 
