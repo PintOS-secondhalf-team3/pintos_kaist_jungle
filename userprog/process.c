@@ -406,9 +406,9 @@ void process_exit(void)
 	sema_up(&cur->wait_sema); 
 	sema_down(&cur->free_sema);	
 
-	// 스래드의 현재작업 디렉터리의 디렉터리 정보를 메모리에서 해지 ?????????
+	// 스래드의 현재작업 디렉터리의 디렉터리 정보를 메모리에서 해지 
 	//------project4-start---------------------------------------------------
-	cur->cur_dir = NULL;
+	dir_close(cur->cur_dir);
 	//------project4-end-----------------------------------------------------
 	
 }
