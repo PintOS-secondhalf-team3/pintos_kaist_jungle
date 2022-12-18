@@ -511,8 +511,7 @@ void check_valid_buffer(void *buffer, unsigned size, void *rsp, bool to_write)
 		return;
 	}
 
-	for (int i = 0; i < size; i++)
-	{
+	for (int i = 0; i < size; i++) {
 		// 인자로 받은 buffer부터 buffer + size까지의 크기가 한 페이지의 크기를 넘을수도 있음
 		struct page *page = check_address(buffer + i);
 		if (page == NULL)
@@ -564,3 +563,4 @@ int symlink(const char *target, const char *linkpath)
 
 }
 //------project4-end--------------------------
+

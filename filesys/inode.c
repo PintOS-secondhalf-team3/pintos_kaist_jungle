@@ -193,7 +193,6 @@ bool inode_create(disk_sector_t sector, off_t length, uint32_t is_dir)
 		// free (disk_inode);
 		////////////////// 기존 코드 end
 	}
-	printf("[inode_create] success: %d\n", success);
 	return success;
 }
 
@@ -201,8 +200,7 @@ bool inode_create(disk_sector_t sector, off_t length, uint32_t is_dir)
  * and returns a `struct inode' that contains it.
  * Returns a null pointer if memory allocation fails. */
 struct inode *
-inode_open(disk_sector_t sector)
-{
+inode_open (disk_sector_t sector) {   //해야할 부분 p.543
 	struct list_elem *e;
 	struct inode *inode;
 
@@ -384,17 +382,15 @@ off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size,
 		if (chunk_size <= 0)
 			break;
 
-		if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE)
-		{
+		if (sector_ofs == 0 && chunk_size == DISK_SECTOR_SIZE) {    // 한 섹터 전체에 write
 			/* Write full sector directly to disk. */
 			disk_write(filesys_disk, sector_idx, buffer + bytes_written);
 		}
 		else
 		{
 			/* We need a bounce buffer. */
-			if (bounce == NULL)
-			{
-				bounce = malloc(DISK_SECTOR_SIZE);
+			if (bounce == NULL) {     
+				bounce = malloc (DISK_SECTOR_SIZE);
 				if (bounce == NULL)
 					break;
 			}

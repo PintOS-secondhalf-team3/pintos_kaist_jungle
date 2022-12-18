@@ -305,7 +305,9 @@ int process_exec(void *f_name)
 	/* If load failed, quit. */
 	palloc_free_page(file_name);
 	if (!success)
+	{
 		return -1;
+	}
 	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true); // for debugging
 	/* Start switched process. */
 	do_iret(&_if);
@@ -410,7 +412,6 @@ void process_exit(void)
 	// cur->cur_dir = NULL;
 	dir_close(cur->cur_dir); // heesan
 	//------project4-end------------------------------------------------
-	
 }
 
 /* Free the current process's resources. */
@@ -568,6 +569,7 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_)
 static bool
 load(const char *file_name, struct intr_frame *if_)
 {
+	//printf("======================load 진입 \n");
 	struct thread *t = thread_current();
 	struct ELF ehdr;
 	struct file *file = NULL;
@@ -818,6 +820,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack(struct intr_frame *if_)
 {	
+	//printf("======================setup_stack 진입 \n");
 	uint8_t *kpage;
 	bool success = false;
 
@@ -852,7 +855,7 @@ lazy_load_segment(struct page *page, void *aux)
 	off_t offsetof = ((struct container *)aux)->offset;
 	size_t page_read_bytes = ((struct container *)aux)->page_read_bytes;
 	size_t page_zero_bytes = PGSIZE - page_read_bytes;
-	
+	// printf("=====================lazy_load_segment진입\n");
 	file_seek(file, offsetof);	// 파일 읽을 위치 세팅
 	// disk에 있는 file 내용을 메모리로 읽어온다. 
 	if (file_read(file, frame->kva, page_read_bytes) != (int)page_read_bytes)
@@ -928,6 +931,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
 /* stack 초기화 */
 bool setup_stack(struct intr_frame *if_)
 {	
+	//printf("======================setup_stack 진입 \n");
 	// 스택을 식별하는 방법을 제공해야 할 수도 있음
 	// vm/vm.h의 vm_type에 있는 보조 마커(예: VM_MARKER_0)를 사용하여 페이지를 표시할 수 있음
 	bool success = false;

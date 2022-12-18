@@ -7,6 +7,7 @@
 #include "include/threads/thread.h"
 #include "userprog/process.h"
 #include "threads/vaddr.h"
+#include "threads/mmu.h"
 
 //-------project3-memory_management-start--------------
 struct list frame_table;	// frame_table을 전역으로 선언함
@@ -230,6 +231,7 @@ vm_evict_frame(void)
 static struct frame *
 vm_get_frame (void) {
 	// 새로운 frame 만들기
+	//printf("==================vm_get_frame 진입\n");
 	struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
 
 	// physical memory의 user pool에서 1page를 할당하고, 이에 해당하는 kva를 반환
@@ -257,7 +259,7 @@ vm_stack_growth(void *addr UNUSED)
 {	
 	// 페이지 할당받기 
 	if (vm_alloc_page(VM_ANON | VM_MARKER_0, addr, 1)) {    // type, upage, writable
-		vm_claim_page(addr);	// 페이지 claim
+		vm_claim_page(addr); // va에 해당하는 page를 가져온 뒤, vm_do_claim_page()를 호출하여 물리 frame을 새로 할당받고 이를 page와 연결함. 또한, page table entry에 해당 정보를 매핑함
 		thread_current()->stack_bottom -= PGSIZE;
     }
 }
@@ -273,11 +275,11 @@ vm_handle_wp(struct page *page UNUSED)
 // 접근 하는데 실제로는 원하는 데이터가 물리 메모리에 load 혹은 저장되어있지 않을 경우 발생함
 bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool user UNUSED, bool write UNUSED, bool not_present UNUSED)
 { 	
+	//printf("======================vm_try_handle_fault 진입 \n");
 	struct supplemental_page_table *spt UNUSED = &thread_current()->spt;
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-
 	// --------------------project3 Anonymous Page start---------
 	// 먼저 유효한 page fault인지 확인
 	if (is_kernel_vaddr(addr) || addr == NULL) {
@@ -288,7 +290,9 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
    	 	void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
 
         if (!vm_claim_page(addr)) {	// page를 새로 할당받지 못하는 경우 진입
-			// 유저 스택영역에 접근하는 경우임, 참고: 0x100000 = 2^20 = 1MB 
+			/* 유저 스택영역에 접근하는 경우임, 참고: 0x100000 = 2^20 = 1MB 
+			   rsp_stack과 한개의 페이지 크기 8사이의 주소에서 page_fault가 났는지, 주소가 유저스택의
+			   최대 최소 영역 안에 있는지 */
             if (rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK) { 
                 vm_stack_growth(pg_round_down(addr));	
                 return true;
@@ -300,6 +304,9 @@ bool vm_try_handle_fault(struct intr_frame *f UNUSED, void *addr UNUSED, bool us
     }
     return false;
 	// --------------------project3 Anonymous Page end----------
+
+	int result = vm_do_claim_page(page);
+	return result;
 }
 
 /* Free the page.
@@ -344,16 +351,17 @@ vm_do_claim_page(struct page *page)
 	/* Set links */
 	frame->page = page;
 	page->frame = frame;
-
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	// install_page: page와 frame의 연결정보를 pml4에 추가하는 함수
-	// 페이지테이블에 frame과 page의 연결을 추가함
+	// 페이지테이블에 frame과 page의 연결을 추가함(pml4에 해당 페이지 추가)
 	if (install_page(page->va, frame->kva, page->writable))
 	{
 		// swap in: disk(swap area)에서 메모리로 데이터 가져옴
 		// page fault 나고 swap_in 실행 시 uninit_initializer가 실행됨
 		// uninit_initalizer에서 init에 있던 lazy_load_segment 호출되고, type에 맞는 initializer 호출됨
-		return swap_in(page, frame->kva);	
+		//printf("================swap_in 직전\n");
+		int result = swap_in(page, frame->kva);	
+		return result;
 	}
 	return false;
 }

@@ -26,6 +26,8 @@
         "uninit.h": "c",
         "bitmap.h": "c",
         "list.h": "c",
-        "anon.h": "c"
+
+        "anon.h": "c",
+        "fat.h": "c"
     }
 }
