@@ -15,16 +15,20 @@
  * Must be exactly DISK_SECTOR_SIZE bytes long. */
 struct inode_disk
 {
+
+	// start : 파일의 inode인 경우 파일의 실제 내용,
+	// 디렉토리의 inode인 경우 directory entry들이 저장되어 있는 disk의 sector 번호를 나타낸다.
 	disk_sector_t start;  /* First data sector. */
+	
+	// 저장된 공간의 길이인데 섹터단위이다.
 	off_t length;		  /* File size in bytes. */
 	unsigned magic;		  /* Magic number. */
 	uint32_t unused[125]; /* Not used. */
 
 	// ----------project4 subdiretory start ----------
-	// 디렉토리 구분 변수 
-	uint32_t is_dir;	  // true: dir, false: file
+	// 디렉토리 구분 변수
+	uint32_t is_dir; // true: dir, false: file
 	// ----------project4 subdiretory end ----------
-
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -38,12 +42,15 @@ bytes_to_sectors(off_t size)
 /* In-memory inode. */
 struct inode
 {
-	struct list_elem elem;										/* Element in inode list. */
-	disk_sector_t sector; /* Sector number of disk location. */ // inode_disk의 start
-	int open_cnt;												/* Number of openers. */
-	bool removed;												/* True if deleted, false otherwise. */
-	int deny_write_cnt;											/* 0: writes ok, >0: deny writes. */
-	struct inode_disk data;										/* Inode content. */
+	struct list_elem elem;	/* Element in inode list. */
+	disk_sector_t sector;	/* Sector number of disk location. */ // 디스크에서 몇번째 섹터인지(숫자임)
+	int open_cnt;			/* Number of openers. */
+	bool removed;			/* True if deleted, false otherwise. */
+	int deny_write_cnt;		/* 0: writes ok, >0: deny writes. */
+	//  디스크에 저장된 메타데이터 정보를 물리메모리에 올려놓은 것이다.
+	// 매번 disk에 참조할 수 없기 때문에 물리 메모리에 올려놓고 사용하며,
+	// 더이상 필요가 없어지면 inode_close()시에 다시 disk에 write back한다.
+	struct inode_disk data; /* Inode content. */
 };
 
 /* Returns the disk sector that contains byte offset POS within
@@ -122,7 +129,7 @@ bool inode_create(disk_sector_t sector, off_t length, uint32_t is_dir)
 		disk_inode->length = length;			   // 인자로 받은 length 넣어주기
 		disk_inode->magic = INODE_MAGIC;
 		// inode 생성 시, struct inode_disk에 추가한 파일,디렉터리 구분
-		// 을 위한 필드를 is_dir인자 값으로 설정 
+		// 을 위한 필드를 is_dir인자 값으로 설정
 		disk_inode->is_dir = is_dir; // inode 생성 시, 파일,디렉터리 구분을 위한 필드를 is_dir인자 값으로 설정
 
 		//------project4-start--------------------------------------------
@@ -228,7 +235,7 @@ inode_open(disk_sector_t sector)
 	inode->sector = sector;
 	inode->open_cnt = 1;
 	inode->deny_write_cnt = 0;
-	inode->removed = false;
+	inode->removed = false; // 삭제되면 true로 바꿈
 	disk_read(filesys_disk, inode->sector, &inode->data);
 	return inode;
 }
@@ -354,7 +361,6 @@ off_t inode_read_at(struct inode *inode, void *buffer_, off_t size, off_t offset
 off_t inode_write_at(struct inode *inode, const void *buffer_, off_t size,
 					 off_t offset)
 {
-	// printf("===========wirte at 들어옴\n");
 	const uint8_t *buffer = buffer_;
 	off_t bytes_written = 0;
 	uint8_t *bounce = NULL;
@@ -455,11 +461,10 @@ bool inode_is_dir(const struct inode *inode)
 	struct inode_disk *disk_inode = calloc(1, sizeof *disk_inode);
 
 	/* in-memory inode의 on-disk inode를 읽어 inode_disk에 저장 */
-	disk_read(filesys_disk,cluster_to_sector(inode->sector),disk_inode);
- 
+	disk_read(filesys_disk, cluster_to_sector(inode->sector), disk_inode);
+
 	/* on-disk inode의 is_dir을 result에 저장하여 반환 */
 	result = disk_inode->is_dir; // 1 or 0이 있을거임.
-
 
 	return result;
 }

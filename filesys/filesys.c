@@ -127,7 +127,6 @@ filesys_open(const char *name)
 	struct dir *dir = NULL;
 	struct inode *inode = NULL;
 
-	// parse_path 과정
 	while (true)
 	{
 		strlcpy(path_name, name, strlen(name) + 1);
@@ -145,7 +144,6 @@ filesys_open(const char *name)
 	return file_open(inode);
 
 #else
-	// printf("[filesys_open] 들어옴\n");
 
 	struct dir *dir = NULL;
 	struct inode *inode = NULL;
@@ -156,7 +154,6 @@ filesys_open(const char *name)
 	}
 	dir_close(dir);
 
-	// printf("[filesys_open] 나간다\n");
 	return file_open(inode);
 #endif
 }
@@ -166,7 +163,7 @@ filesys_open(const char *name)
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
 bool filesys_remove(const char *name)
-{
+{	// 디렉토리에서 파일을 찾아서 있는지 확인하고 삭제를 시킨다..
 	struct dir *dir = dir_open_root();
 	bool success = dir != NULL && dir_remove(dir, name);
 	dir_close(dir);

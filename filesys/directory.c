@@ -138,8 +138,10 @@ dir_lookup (const struct dir *dir, const char *name,
  * Returns true if successful, false on failure.
  * Fails if NAME is invalid (i.e. too long) or a disk or memory
  * error occurs. */
-bool
+// dir에다가 dir_entry를 추가하는 함수
+bool 
 dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
+	
 	struct dir_entry e;
 	off_t ofs;
 	bool success = false;
@@ -148,10 +150,12 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 	ASSERT (name != NULL);
 
 	/* Check NAME for validity. */
+	// 이름 유효성 검사
 	if (*name == '\0' || strlen (name) > NAME_MAX)
 		return false;
 
 	/* Check that NAME is not in use. */
+	// 이 이름을 가지고 있는 dir_entry가 dir안에 있는지 본다.
 	if (lookup (dir, name, NULL, NULL))
 		goto done;
 
@@ -162,15 +166,19 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 	 * inode_read_at() will only return a short read at end of file.
 	 * Otherwise, we'd need to verify that we didn't get a short
 	 * read due to something intermittent such as low memory. */
+	// 인자로 받은 name을 가지고 있는 dir_entry가 dir안에 없으면 for문 실행.
 	for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
-			ofs += sizeof e)
+			ofs += sizeof e) // dir에서 비어있는 dir_entry를 하나 가져옴
 		if (!e.in_use)
 			break;
+	// 빈 dir_entry의 인덱스가 ofs에 담겼다
 
 	/* Write slot. */
 	e.in_use = true;
-	strlcpy (e.name, name, sizeof e.name);
+	strlcpy (e.name, name, sizeof e.name); // dir_entry안에 name 멤버에 name을 새긴다.
 	e.inode_sector = inode_sector;
+
+	// 업데이트한 entry를 원래 자리(disk위에)에 복사한다.
 	success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 
 done:
