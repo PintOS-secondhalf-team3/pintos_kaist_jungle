@@ -155,7 +155,7 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 		return false;
 
 	/* Check that NAME is not in use. */
-	// 이 이름을 가지고 있는 dir_entry가 dir안에 있는지 본다.
+	// 현 dir에 name을 가진 file이 있는지 bool을 반환
 	if (lookup (dir, name, NULL, NULL))
 		goto done;
 

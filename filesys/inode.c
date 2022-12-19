@@ -23,7 +23,7 @@ struct inode_disk
 	// 저장된 공간의 길이인데 섹터단위이다.
 	off_t length;		  /* File size in bytes. */
 	unsigned magic;		  /* Magic number. */
-	uint32_t unused[125]; /* Not used. */
+	uint32_t unused[124]; /* Not used. */
 
 	// ----------project4 subdiretory start ----------
 	// 디렉토리 구분 변수

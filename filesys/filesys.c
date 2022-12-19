@@ -163,12 +163,44 @@ filesys_open(const char *name)
  * Fails if no file named NAME exists,
  * or if an internal memory allocation fails. */
 bool filesys_remove(const char *name)
-{	// 디렉토리에서 파일을 찾아서 있는지 확인하고 삭제를 시킨다..
-	struct dir *dir = dir_open_root();
-	bool success = dir != NULL && dir_remove(dir, name);
+{
+	// #ifdef EFILESYS
+	char *cp_name = (char *)malloc(strlen(name) + 1);
+	strlcpy(cp_name, name, strlen(name) + 1);
+	char *file_name = (char *)malloc(strlen(name) + 1);
+	struct dir *dir = parse_path(name, file_name);
+	struct inode *inode = NULL;
+	bool success = false;
+	if (dir != NULL)
+	{
+		dir_lookup(dir, file_name, &inode);
+	}
+	if (inode_is_dir(inode))
+	{ // inode가 디렉터리일 경우 디렉터리내 파일 존재 여부 검사
+		struct dir *cur_dir = dir_open(dir_get_inode(dir));
+		char *temp = (char *)malloc(strlen(name) + 1);
+		if (cur_dir)
+		{
+			if (!dir_readdir(cur_dir, temp))
+			{ // 디렉터리내 파일이 존재 하지 않을 경우, 디렉터리에서 file_name의 엔트리 삭제
+				success = dir != NULL && dir_remove(dir, file_name);
+			}
+		}
+		dir_close(cur_dir);
+	}
+	else
+	{
+		success = dir != NULL && dir_remove(dir, file_name);
+	}
 	dir_close(dir);
-
+	free(cp_name);
+	free(file_name);
 	return success;
+	// #endif
+	// struct dir *dir = dir_open_root ();
+	// bool success = dir != NULL && dir_remove (dir, name);
+	// dir_close (dir);
+	// return success;
 }
 
 /* Formats the file system. */
