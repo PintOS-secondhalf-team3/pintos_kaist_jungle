@@ -14,6 +14,7 @@
 struct disk *filesys_disk;
 
 static void do_format(void);
+struct dir *parse_path(char *path_name, char *file_name);
 
 /* Initializes the file system module.
  * If FORMAT is true, reformats the file system. */
@@ -70,13 +71,21 @@ void filesys_done(void)
 bool filesys_create(const char *name, off_t initial_size)
 {
 	//------project4-start------------------------
+	// name 의 파일경로를 path_name에 복사
+	char *path_name = (char *)malloc(strlen(name) + 1);
+	strlcpy(path_name, name, strlen(name) + 1);
+
+	// path_name의 경로분석 후 file_name에 복사
+	char *file_name = (char *)malloc(strlen(name) + 1);
+	struct dir *dir = parse_path(path_name, file_name);
+
+	// 메모리에 디렉터리 inode 자료구조 생성
+	// struct dir *dir = dir_open_root(); // 수정 해야 함????????????
+
 	cluster_t new_cluster = fat_create_chain(0); // inode를 위한 새로운 cluster 만들기
 	if (new_cluster == 0)
 		return false;
 	disk_sector_t inode_sector = cluster_to_sector(new_cluster); // 새로 만든 cluster의 disk sector
-
-	// 메모리에 root 디렉터리 inode 자료구조 생성
-	struct dir *dir = dir_open_root(); // 수정 해야 함????????????
 
 	bool success = (dir != NULL && inode_create(inode_sector, initial_size, 0) && dir_add(dir, name, inode_sector));
 	// dir_add :inode 만들고, dir에 inode 추가
@@ -86,17 +95,17 @@ bool filesys_create(const char *name, off_t initial_size)
 	}
 
 	dir_close(dir);
+	free(path_name);
+	free(file_name);
 	//------project4-end--------------------------
-
-	////// 기존 코드 start
+	//------------- 기존 코드 start-------------------
 	// disk_sector_t inode_sector = 0;
 	// struct dir *dir = dir_open_root();
 	// bool success = (dir != NULL && free_map_allocate(1, &inode_sector) && inode_create(inode_sector, initial_size) && dir_add(dir, name, inode_sector));
 	// if (!success && inode_sector != 0)
 	// 	free_map_release(inode_sector, 1);
 	// dir_close(dir);
-	////// 기존 코드 end
-
+	//------------- 기존 코드 end-------------------
 	return success;
 }
 
@@ -110,16 +119,46 @@ bool filesys_create(const char *name, off_t initial_size)
 struct file *
 filesys_open(const char *name)
 {
+#ifdef EFILESYS
+	// filesys_create 와 마찬가지로 name의 파일경로를 cp_name에 복사하는 것 구현
+	char *path_name = (char *)malloc(strlen(name) + 1);
+	char *file_name = (char *)malloc(strlen(name) + 1);
+
+	struct dir *dir = NULL;
+	struct inode *inode = NULL;
+
+	// parse_path 과정
+	while (true)
+	{
+		strlcpy(path_name, name, strlen(name) + 1);
+		dir = parse_path(path_name, file_name);
+
+		if (dir != NULL)
+		{
+			dir_lookup(dir, file_name, &inode);
+		}
+		free(path_name);
+		free(file_name);
+		dir_close(dir);
+		break;
+	}
+	return file_open(inode);
+
+#else
 	// printf("[filesys_open] 들어옴\n");
-	struct dir *dir = dir_open_root();
+
+	struct dir *dir = NULL;
 	struct inode *inode = NULL;
 
 	if (dir != NULL)
+	{
 		dir_lookup(dir, name, &inode);
+	}
 	dir_close(dir);
 
 	// printf("[filesys_open] 나간다\n");
 	return file_open(inode);
+#endif
 }
 
 /* Deletes the file named NAME.
@@ -149,11 +188,11 @@ do_format(void) // 수정 요망 (subdirectory part 구현)
 		PANIC("root directory creation failed");
 
 	// 파일 시스템 포맷 시 root 디렉토리 엔트리에 '.', '..'파일을 추가
-	struct dir* root_dir = dir_open_root();
-	dir_add(root_dir,".",ROOT_DIR_SECTOR);
-	dir_add(root_dir,"..",ROOT_DIR_SECTOR);
+	struct dir *root_dir = dir_open_root();
+	dir_add(root_dir, ".", ROOT_DIR_SECTOR);
+	dir_add(root_dir, "..", ROOT_DIR_SECTOR);
 	dir_close(root_dir);
-	
+
 	//------project4-end--------------------------
 	fat_close();
 #else
@@ -173,7 +212,7 @@ do_format(void) // 수정 요망 (subdirectory part 구현)
 	path_name의 시작이 ‘/’의 여부에 따라 절대, 상대경로 구분하여 디렉터리 정보를 dir에 저장
 	strtok_r() 함수를 이용하여 path_name의 디렉터리 정보와 파일 이름 저장
 	file_name에 파일 이름 저장
-	dir로 오픈된 디렉터리를 포인팅 
+	dir로 오픈된 디렉터리를 포인팅
 */
 struct dir *parse_path(char *path_name, char *file_name)
 {
@@ -185,12 +224,14 @@ struct dir *parse_path(char *path_name, char *file_name)
 
 	if (strlen(path_name) == 0)
 		return NULL;
-	
+
 	// path_name의 절대/상대 경로에 따른 디렉터리 정보 저장
-	if(path_name[0] == '/'){
+	if (path_name[0] == '/')
+	{
 		dir = dir_open_root();
 	}
-	else {
+	else
+	{
 		dir = dir_reopen(thread_current()->cur_dir);
 	}
 	/* PATH_NAME의 절대/상대경로에 따른 디렉터리 정보 저장 (구현)*/
@@ -198,14 +239,13 @@ struct dir *parse_path(char *path_name, char *file_name)
 	token = strtok_r(path_name, "/", &savePtr);
 	nextToken = strtok_r(NULL, "/", &savePtr);
 
-    // "/"를 open하려는 케이스
-    if(token == NULL) { // file_name이 '/' 일 때 유닉스에서 root로 감
-        token = (char*)malloc(2);
+	// "/"를 open하려는 케이스
+	if (token == NULL)
+	{ // file_name이 '/' 일 때 유닉스에서 root로 감
+		token = (char *)malloc(2);
 		// 현재 디렉토리
-        strlcpy(token, ".", 2);
-    }
-
-	
+		strlcpy(token, ".", 2);
+	}
 
 	while (token != NULL && nextToken != NULL)
 	{
@@ -215,7 +255,7 @@ struct dir *parse_path(char *path_name, char *file_name)
 			dir_close(dir);
 			return NULL;
 		}
-		// struct inode* inode = dir_get_inode(dir); // ????? 보류
+		// struct inode* inode = dir_get_inode(dir); // dir_lookup() 이 역할을 대신함.
 
 		/* inode가 파일일 경우 NULL 반환 */
 		if (inode_is_dir(inode) == 0)
@@ -243,7 +283,6 @@ struct dir *parse_path(char *path_name, char *file_name)
 	return dir;
 fail:
 	return NULL;
-
 }
 
 //------project4-subdirectory end--------------------------
