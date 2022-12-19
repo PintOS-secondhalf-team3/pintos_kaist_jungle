@@ -69,11 +69,18 @@ void filesys_done(void)
 bool filesys_create(const char *name, off_t initial_size)
 {
 	//------project4-start------------------------
+	 // name의 파일경로를 cp_name에 복사
+	char* cp_name = (char*)malloc(strlen(name) + 1);
+	strlcpy(cp_name, name, strlen(name) + 1);
+
+	 // cp_name의 경로분석
+	char* file_name = (char*)malloc(strlen(name) + 1);
+
 	cluster_t new_cluster = fat_create_chain(0);	// inode를 위한 새로운 cluster 만들기
 	if (new_cluster == 0) return false; 
 	disk_sector_t inode_sector = cluster_to_sector(new_cluster);	// 새로 만든 cluster의 disk sector
 
-	struct dir *dir = dir_open_root();	// 수정 해야 함?>???????????
+	struct dir *dir = parse_path(cp_name, file_name);	// 수정 해야 함?>???????????
 
 	bool success = (dir != NULL && inode_create(inode_sector, initial_size, 0) && dir_add(dir, name, inode_sector));	// inode 만들고, dir에 inode 추가
 	if (!success) {
@@ -192,7 +199,7 @@ struct dir* parse_path (char *path_name, char *file_name) {
 			return NULL;
 		}
 
-		struct inode* inode = dir_get_inode(dir);   //보류 
+		// struct inode* inode = dir_get_inode(dir);   //보류 
 
 		/* inode가 파일일 경우 NULL 반환 */
 		if(inode_is_dir(inode) == 0) {
@@ -215,6 +222,9 @@ struct dir* parse_path (char *path_name, char *file_name) {
 	strlcpy(file_name, token, strlen(token) + 1);
 	/* dir 정보 반환 */ 
 	return dir;
+
+fail:
+	return NULL;
 }
 
 //------project4-end--------------------------

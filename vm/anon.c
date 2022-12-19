@@ -91,7 +91,7 @@ anon_swap_out (struct page *page) {
 	// disk에 변경사항 write해줌, 1page = 8sector = 8slot
 	for (int i=0; i < SECTORS_PER_PAGE; ++i) {
 		// DISK_SECTOR_SIZE = 512 = 1섹터의 크기가 512bytes이기 때문
-		disk_write(swap_disk, bitmap_idx*SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE*i);  //질문 잘 기억 안남.
+		disk_write(swap_disk, bitmap_idx*SECTORS_PER_PAGE + i, page->va + DISK_SECTOR_SIZE*i); 
 	}
 
 	//bitmap_set(swap_table, bitmap_idx, true);	// bitmap을 다시 true로 세팅
