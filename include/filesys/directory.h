@@ -5,11 +5,28 @@
 #include <stddef.h>
 #include "devices/disk.h"
 
+/* A directory. */
+struct dir {
+	struct inode *inode;                /* Backing store. */
+	int32_t pos;                          /* Current position. */
+};
+
 /* Maximum length of a file name component.
  * This is the traditional UNIX maximum length.
  * After directories are implemented, this maximum length may be
  * retained, but much longer full path names must be allowed. */
 #define NAME_MAX 14
+
+/* A single directory entry. */
+struct dir_entry {
+
+	// 얘가 file을 직접적으로 가리키고 있을 것
+	disk_sector_t inode_sector;         /* Sector number of header. */
+
+	char name[NAME_MAX + 1];            /* Null terminated file name. */
+	bool in_use;                        /* In use or free? */
+};
+
 
 struct inode;
 

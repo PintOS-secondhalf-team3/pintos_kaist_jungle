@@ -121,12 +121,15 @@ struct thread *get_child(int pid)
 				 부모 프로세스가 갖고 있던 레지스터 정보를 담아 고대로 복사해야 해서 */
 tid_t process_fork(const char *name, struct intr_frame *if_ UNUSED)
 {
+	
 	/* Clone current thread to new thread.*/
 	/* project 2 fork */
 	struct thread *cur = thread_current();
 	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame)); //  parent_if에는 유저 스택 정보 담기
 	/* 자식 프로세스 생성 */
+	printf("process fork 들어옴\n");
 	tid_t pid = thread_create(name, cur->priority+1, __do_fork, cur); // 마지막에 thread_current를 줘서, 같은 rsi를 공유하게 함
+	printf("process fork 에서 thread create 완료, tid: %d\n", pid);
 	if (pid == TID_ERROR)
 	{
 		return TID_ERROR;
@@ -372,7 +375,6 @@ int process_wait(tid_t child_tid UNUSED)
 	remove_child_process(child); /* 프로세스 디스크립터를 자식 리스트에서 제거 후 메모리 해제 */
 	/* 자식 프로세스의 exit status 리턴 */
 	sema_up(&child->free_sema);
-
 	return exit_status;
 	// thread_set_priority(thread_get_priority() - 1);
 	// return -1;
@@ -392,6 +394,10 @@ void process_exit(void)
 	}
 	/* 실행 중인 파일 close */
 	file_close(cur->run_file);
+
+#ifdef EFILESYS
+    dir_close(thread_current()->cur_dir); // 스레드의 현재 작업 디렉터리의 정보 메모리에서 해지
+#endif
 	
 	palloc_free_multiple(cur->fd_table, FDT_PAGES); // multi-oom
 
@@ -407,9 +413,6 @@ void process_exit(void)
 	sema_down(&cur->free_sema);	
 
 	//------project4-start---------------------------------------------
-	// 스래드의 현재작업 디렉터리의 디렉터리 정보를 메모리에서 해지 ?????????
-	// diretory를 close?? 
-	// cur->cur_dir = NULL;
 	dir_close(cur->cur_dir); // heesan
 	//------project4-end------------------------------------------------
 }

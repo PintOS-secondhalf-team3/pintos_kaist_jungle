@@ -18,7 +18,7 @@ struct inode_disk
 	disk_sector_t start;  /* First data sector. */
 	off_t length;		  /* File size in bytes. */
 	unsigned magic;		  /* Magic number. */
-	uint32_t unused[125]; /* Not used. */
+	uint32_t unused[124]; /* Not used. */
 
 	// ----------project4 subdiretory start ----------
 	// 디렉토리 구분 변수 
@@ -135,18 +135,6 @@ bool inode_create(disk_sector_t sector, off_t length, uint32_t is_dir)
 		disk_inode->start = cluster_to_sector(new_cluster); // 새로운 체인을 만든 뒤에 해당 주소를 disk_inode->start값에 넣어주기
 		disk_write(filesys_disk, sector, disk_inode);		// inode의 구조체(메타데이터) disk에 쓰기
 
-		// cluster_t clst = sector_to_cluster(disk_inode->start);
-		// cluster_t next_clst;
-		// // sectors 개수만큼 클러스터 체인을 만들기
-		// for (size_t i=1; i<sectors; i++) {
-		// 	next_clst = fat_create_chain(clst);
-		// 	if(next_clst == 0) {	// 체인 만들기에 실패한 경우 예외처리
-		// 		free(disk_inode);
-		// 		return success;
-		// 	}
-		// 	clst = next_clst;
-		// }
-
 		// inode(진짜 데이터들)를 저장하는 클러스터 체인을 모두 0으로 초기화
 		if (sectors > 0)
 		{
@@ -200,7 +188,7 @@ bool inode_create(disk_sector_t sector, off_t length, uint32_t is_dir)
  * and returns a `struct inode' that contains it.
  * Returns a null pointer if memory allocation fails. */
 struct inode *
-inode_open (disk_sector_t sector) {   //해야할 부분 p.543
+inode_open (disk_sector_t sector) {   // 해야할 부분 p.543
 	struct list_elem *e;
 	struct inode *inode;
 

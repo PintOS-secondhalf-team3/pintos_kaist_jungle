@@ -6,22 +6,21 @@
 #include "filesys/inode.h"
 #include "threads/malloc.h"
 #include "filesys/fat.h"
+// /* A directory. */
+// struct dir {
+// 	struct inode *inode;                /* Backing store. */
+// 	off_t pos;                          /* Current position. */
+// };
 
-/* A directory. */
-struct dir {
-	struct inode *inode;                /* Backing store. */
-	off_t pos;                          /* Current position. */
-};
+// /* A single directory entry. */
+// struct dir_entry {
 
-/* A single directory entry. */
-struct dir_entry {
+// 	// 얘가 file을 직접적으로 가리키고 있을 것
+// 	disk_sector_t inode_sector;         /* Sector number of header. */
 
-	// 얘가 file을 직접적으로 가리키고 있을 것
-	disk_sector_t inode_sector;         /* Sector number of header. */
-
-	char name[NAME_MAX + 1];            /* Null terminated file name. */
-	bool in_use;                        /* In use or free? */
-};
+// 	char name[NAME_MAX + 1];            /* Null terminated file name. */
+// 	bool in_use;                        /* In use or free? */
+// };
 
 /* Creates a directory with space for ENTRY_CNT entries in the
  * given SECTOR.  Returns true if successful, false on failure. */
@@ -115,7 +114,8 @@ lookup (const struct dir *dir, const char *name,
  * and returns true if one exists, false otherwise.
  * On success, sets *INODE to an inode for the file, otherwise to
  * a null pointer.  The caller must close *INODE. */
-// dir_lookup은 현 dir에 해당 file이 있는지를 보고 있으면, 인자 inode에 해당 inode를 새긴다
+/* dir_lookup은 현 dir에 해당 name의 file이 있는지를 확인하고, 인자 inode에 해당 file의 inode를 새긴다
+*/
 bool
 dir_lookup (const struct dir *dir, const char *name,
 		struct inode **inode) {
@@ -167,7 +167,7 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector) {
 		if (!e.in_use)
 			break;
 
-	/* Write slot. */
+	/* Write slot. */ 
 	e.in_use = true;
 	strlcpy (e.name, name, sizeof e.name);
 	e.inode_sector = inode_sector;
