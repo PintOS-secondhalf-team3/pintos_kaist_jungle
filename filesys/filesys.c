@@ -217,6 +217,7 @@ struct dir* parse_path (char *path_name, char *file_name) {
 		token = nextToken;
 		nextToken = strtok_r(NULL ,"/", &savePtr);
 		//token = trtok_r (NULL, "/", &savePtr);
+
 	}
 	// token의 파일 이름을 file_name에 저장
 	strlcpy(file_name, token, strlen(token) + 1);
