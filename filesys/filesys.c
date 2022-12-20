@@ -87,7 +87,7 @@ bool filesys_create(const char *name, off_t initial_size)
 		return false;
 	disk_sector_t inode_sector = cluster_to_sector(new_cluster); // 새로 만든 cluster의 disk sector
 
-	bool success = (dir != NULL && inode_create(inode_sector, initial_size, 0) && dir_add(dir, name, inode_sector));
+	bool success = (dir != NULL && inode_create(inode_sector, initial_size, 0) && dir_add(dir, file_name, inode_sector));
 	// dir_add :inode 만들고, dir에 inode 추가
 	if (!success)
 	{
