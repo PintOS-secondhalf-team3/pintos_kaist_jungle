@@ -120,6 +120,10 @@ thread_init (void) {
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
+
+	//------project4-Subdirectories-start---------------------------------------------------
+	initial_thread->cur_dir = NULL;
+	//------project4-Subdirectories-end---------------------------------------------------
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -199,6 +203,15 @@ thread_create (const char *name, int priority,
 	/* Initialize thread. */
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
+
+	//------project4-start---------------------------------------------------
+	#ifdef EFILESYS
+	if(thread_current()->cur_dir != NULL) {
+		// 자식 스레드의 작업 디렉터리를 부모 스레드의 작업 디렉터리로 디렉터리를 다시 오픈하여 설정
+		t->cur_dir = dir_reopen(thread_current()->cur_dir);
+	}
+	#endif
+	//------project4-end-----------------------------------------------------
 
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */

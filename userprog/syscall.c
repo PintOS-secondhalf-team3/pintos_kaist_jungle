@@ -38,6 +38,8 @@ unsigned tell(int fd);
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);
 void munmap (void *addr);
 void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write);
+bool sys_chdir (const char *path_name);
+bool sys_mkdir(const char *dir);
 
 struct lock filesys_lock;
 
@@ -162,6 +164,26 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			munmap(f->R.rdi);
 			break;
 		// --------------------project3 Memory Mapped Files end-----------
+		//------project4-Subdirectories-start---------------------------------------------------
+		// case SYS_ISDIR:
+		// 	f->R.rax = isdir(f->R.rdi);
+		// 	break;
+		case SYS_CHDIR:
+			f->R.rax = sys_chdir(f->R.rdi);
+			break;
+		case SYS_MKDIR:
+			f->R.rax = sys_mkdir(f->R.rdi);
+			break;
+		// case SYS_READDIR:
+		// 	f->R.rax = readdir(f->R.rdi, f->R.rsi);
+		// 	break;
+		// case SYS_INUMBER:
+		// 	f->R.rax = inumber(f->R.rdi);
+		// 	break;
+		// case SYS_SYMLINK:
+		// 	f->R.rax = symlink(f->R.rdi, f->R.rsi);
+		// 	break;
+		//------project4-Subdirectories-end---------------------------------------------------
 		default:
 			exit(-1);
 	}
@@ -473,5 +495,66 @@ void check_valid_buffer(void* buffer, unsigned size, void* rsp, bool to_write) {
         if(to_write == true && page->writable == false) exit(-1);
     }
 }
-
 // --------------------project3 end-------------------------
+
+//------project4-Subdirectories-start---------------------------------------------------
+bool sys_chdir (const char *path_name){
+	if (path_name == NULL) {
+        return false;
+	}
+
+    // name의 파일 경로 를 cp_name에 복사
+    char *cp_name = (char *)malloc(strlen(path_name) + 1);
+    strlcpy(cp_name, path_name, strlen(path_name) + 1);
+
+    struct dir *chdir = NULL;
+
+    if (cp_name[0] == '/') {	// 절대 경로로 디렉토리 되어 있다면
+        chdir = dir_open_root();
+    }
+    else {						// 상대 경로로 디렉토리 되어 있다면
+        chdir = dir_reopen(thread_current()->cur_dir);
+	}
+
+    // dir경로를 분석하여 디렉터리를 반환
+    char *token, *savePtr;
+    token = strtok_r(cp_name, "/", &savePtr);
+
+    struct inode *inode = NULL;
+    while (token != NULL) {
+        // dir에서 token이름의 파일을 검색하여 inode의 정보를 저장
+        if (!dir_lookup(chdir, token, &inode)) {
+            dir_close(chdir);
+            return false;
+        }
+
+        // inode가 파일일 경우 NULL 반환
+        if (!inode_is_dir(inode)) {
+            dir_close(chdir);
+            return false;
+        }
+
+        // dir의 디렉터리 정보를 메모리에서 해지
+        dir_close(chdir);
+        
+        // inode의 디렉터리 정보를 dir에저장
+        chdir = dir_open(inode);
+
+        // token에검색할경로이름저장
+        token = strtok_r(NULL, "/", &savePtr);
+    }
+    // 스레드의현재작업디렉터리를변경
+    dir_close(thread_current()->cur_dir);
+    thread_current()->cur_dir = chdir;
+    free(cp_name);
+    return true;
+}
+
+// directory 생성
+bool sys_mkdir(const char *dir) {
+    lock_acquire(&filesys_lock);
+    bool new_dir = filesys_create_dir(dir);
+    lock_release(&filesys_lock);
+    return new_dir;
+}
+//------project4-Subdirectories-end---------------------------------------------------

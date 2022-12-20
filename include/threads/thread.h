@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include "threads/interrupt.h"
 #include "threads/synch.h"
+#include "filesys/directory.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -106,6 +107,9 @@ struct thread
 	struct lock *wait_on_lock;		/* 해당 스레드가 대기 하고 있는 lock자료구조의 주소를 저장 */
 	struct list donations;			/* multiple donation 을 고려하기 위해 사용 */
 	struct list_elem donation_elem; /* multiple donation 을 고려하기 위해 사용 */
+	//------project4-Subdirectories-start---------------------------------------------------
+	struct dir *cur_dir;
+	//------project4-Subdirectories-end---------------------------------------------------
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

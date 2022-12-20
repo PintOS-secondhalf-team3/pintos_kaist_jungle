@@ -1,30 +1,30 @@
 #include "filesys/directory.h"
-#include <stdio.h>
-#include <string.h>
-#include <list.h>
-#include "filesys/filesys.h"
-#include "filesys/inode.h"
-#include "threads/malloc.h"
-#include "filesys/fat.h"
+// #include <stdio.h>
+// #include <string.h>
+// #include <list.h>
+// #include "filesys/filesys.h"
+// #include "filesys/inode.h"
+// #include "threads/malloc.h"
+// #include "filesys/fat.h"
 
-/* A directory. */
-struct dir {
-	struct inode *inode;                /* Backing store. */
-	off_t pos;                          /* Current position. */
-};
+// /* A directory. */
+// struct dir {
+// 	struct inode *inode;                /* Backing store. */
+// 	off_t pos;                          /* Current position. */
+// };
 
-/* A single directory entry. */
-struct dir_entry {
-	disk_sector_t inode_sector;         /* Sector number of header. */
-	char name[NAME_MAX + 1];            /* Null terminated file name. */
-	bool in_use;                        /* In use or free? */
-};
+// /* A single directory entry. */
+// struct dir_entry {
+// 	disk_sector_t inode_sector;         /* Sector number of header. */
+// 	char name[NAME_MAX + 1];            /* Null terminated file name. */
+// 	bool in_use;                        /* In use or free? */
+// };
 
 /* Creates a directory with space for ENTRY_CNT entries in the
  * given SECTOR.  Returns true if successful, false on failure. */
 bool
 dir_create (disk_sector_t sector, size_t entry_cnt) {
-	return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+	return inode_create (sector, entry_cnt * sizeof (struct dir_entry), 1);
 }
 
 /* Opens and returns the directory for the given INODE, of which

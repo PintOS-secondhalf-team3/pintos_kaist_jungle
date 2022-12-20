@@ -17,7 +17,11 @@ struct inode_disk {
 	disk_sector_t start;                /* First data sector. */
 	off_t length;                       /* File size in bytes. */
 	unsigned magic;                     /* Magic number. */
-	uint32_t unused[125];               /* Not used. */
+	uint32_t unused[124];               /* Not used. */
+
+	//------project4-Subdirectories-start---------------------------------------------------
+	uint32_t is_dir;
+	//------project4-Subdirectories-end---------------------------------------------------
 };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -90,7 +94,7 @@ inode_init (void) {
  * Returns true if successful.
  * Returns false if memory or disk allocation fails. */
 bool
-inode_create (disk_sector_t sector, off_t length) {	
+inode_create (disk_sector_t sector, off_t length, uint32_t is_dir) {	
 	struct inode_disk *disk_inode = NULL;
 	bool success = false;
 
@@ -105,7 +109,10 @@ inode_create (disk_sector_t sector, off_t length) {
 		size_t sectors = bytes_to_sectors (length);	// 만들어야 할 sector의 개수
 		disk_inode->length = length;				// 인자로 받은 length 넣어주기
 		disk_inode->magic = INODE_MAGIC;
-
+		//------project4-Subdirectories-start---------------------------------------------------
+		// directory 여부 추가
+        disk_inode->is_dir = is_dir;
+		//------project4-Subdirectories-end---------------------------------------------------
 		//------project4-start-----------------------
 		cluster_t new_cluster = fat_create_chain(0);	// 새로운 체인 만들기
 		if (new_cluster == 0) {	// 체인 만들기에 실패한 경우, 예외처리
@@ -134,9 +141,11 @@ inode_create (disk_sector_t sector, off_t length) {
 			disk_sector_t old_disk_sector = disk_inode->start;
 			disk_sector_t new_disk_sector;
 			for (i = 0; i < sectors; i++) 
+			{
 				disk_write (filesys_disk, old_disk_sector, zeros);
 				new_disk_sector = cluster_to_sector(fat_get(sector_to_cluster(old_disk_sector)));
 				old_disk_sector = new_disk_sector;
+			}
 		}
 		free(disk_inode);	// mem에서 잠깐 사용한 temp buffer 느낌이므로 free해주기
 		success = true; 
@@ -403,3 +412,23 @@ off_t
 inode_length (const struct inode *inode) {
 	return inode->data.length;
 }
+
+//------project4-Subdirectories-start---------------------------------------------------
+// inode가 directory인지 판단
+bool inode_is_dir(const struct inode* inode) {
+    bool result;
+
+    // inode_disk 자료구조를 메모리에 할당
+    struct inode_disk *disk_inode = calloc (1, sizeof *disk_inode);
+
+    // in-memory inode의on-disk inode를읽어inode_disk에저장
+    // disk_read(filesys_disk, cluster_to_sector(inode->sector), disk_inode);  //12/20 수정
+	disk_read(filesys_disk, inode->sector, disk_inode);
+
+    // on-disk inode의is_dir을result에저장하여반환
+    result = disk_inode->is_dir;
+    free(disk_inode);
+
+    return result;
+}
+//------project4-Subdirectories-end---------------------------------------------------
